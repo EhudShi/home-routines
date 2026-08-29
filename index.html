@@ -37,6 +37,12 @@
     --focus-ring:#79b39d;
     --today-bg:#eaf3ee;
     --skeleton:#e2e4d8;
+    --hero-bg-1:#3d6b5c;
+    --hero-bg-2:#264336;
+    --hero-ink:#ffffff;
+    --hero-ink-sub:rgba(255,255,255,.82);
+    --hero-item-bg:rgba(255,255,255,.15);
+    --hero-item-bg-hover:rgba(255,255,255,.24);
 
     --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
     --fs-xs:.72rem; --fs-sm:.82rem; --fs-base:.92rem; --fs-md:1.02rem; --fs-lg:1.2rem; --fs-xl:1.5rem; --fs-2xl:1.9rem;
@@ -101,30 +107,38 @@
   .card h2{font-size:var(--fs-md);margin:0 0 var(--sp-4);display:flex;align-items:center;gap:var(--sp-2);font-weight:600;}
 
   .today-card{
-    background:linear-gradient(160deg, var(--accent) 0%, var(--accent-hover) 100%);
-    color:var(--accent-ink);
+    background:linear-gradient(160deg, var(--hero-bg-1) 0%, var(--hero-bg-2) 100%);
+    color:var(--hero-ink);
     border-radius:var(--radius-lg);
     padding:var(--sp-5) var(--sp-5);
     box-shadow:var(--shadow-md);
   }
-  .today-card .today-label{font-size:var(--fs-sm);opacity:.85;margin:0 0 var(--sp-1);font-weight:600;letter-spacing:.02em;}
-  .today-card .today-date{font-size:var(--fs-lg);margin:0 0 var(--sp-4);font-weight:700;text-wrap:balance;}
+  .today-card .today-label{font-size:var(--fs-sm);color:var(--hero-ink-sub);margin:0 0 var(--sp-1);font-weight:600;letter-spacing:.02em;}
+  .today-card .today-date{font-size:var(--fs-lg);color:var(--hero-ink);margin:0 0 var(--sp-4);font-weight:700;text-wrap:balance;}
   .today-list{display:flex;flex-direction:column;gap:var(--sp-2);}
   .today-item{
     display:flex;align-items:center;gap:var(--sp-3);
-    background:rgba(255,255,255,.16);
+    background:var(--hero-item-bg);
     border-radius:var(--radius-md);
     padding:var(--sp-3) var(--sp-4);
     cursor:pointer;
     transition:background .18s var(--ease-out);
   }
-  :root[data-theme="dark"] .today-item{ background:rgba(0,0,0,.18); }
-  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .today-item{ background:rgba(0,0,0,.18); } }
-  .today-item:hover{background:rgba(255,255,255,.26);}
-  .today-item input{width:18px;height:18px;accent-color:var(--accent-ink);flex-shrink:0;cursor:pointer;}
-  .today-item span.name{font-size:var(--fs-base);font-weight:500;}
+  .today-item:hover{background:var(--hero-item-bg-hover);}
+  .today-item input{width:18px;height:18px;accent-color:var(--hero-bg-1);flex-shrink:0;cursor:pointer;}
+  .today-item span.name{font-size:var(--fs-base);font-weight:500;color:var(--hero-ink);}
   .today-item.done span.name{opacity:.6;text-decoration:line-through;}
-  .today-empty{font-size:var(--fs-base);opacity:.9;padding:var(--sp-2) 0;}
+  .today-empty{font-size:var(--fs-base);color:var(--hero-ink-sub);padding:var(--sp-2) 0;}
+  .remind-btn{
+    display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
+    width:100%;margin-top:var(--sp-3);
+    background:transparent;border:1px solid var(--hero-item-bg-hover);color:var(--hero-ink);
+    border-radius:var(--radius-md);padding:var(--sp-2) var(--sp-4);font-size:var(--fs-sm);font-weight:600;
+    cursor:pointer;transition:background .15s var(--ease-out);
+  }
+  .remind-btn:hover{background:var(--hero-item-bg);}
+  .remind-btn:disabled{opacity:.45;cursor:not-allowed;}
+  .remind-note{font-size:var(--fs-xs);color:var(--hero-ink-sub);text-align:center;margin-top:var(--sp-2);min-height:1em;}
 
   label{display:block;font-size:var(--fs-sm);color:var(--sub);margin-bottom:var(--sp-1);font-weight:500;}
   input[type=text], input[type=number]{
@@ -244,23 +258,46 @@
   .chip{
     display:flex;
     align-items:center;
-    gap:var(--sp-1);
+    gap:3px;
     background:var(--card-alt);
     border-radius:6px;
-    padding:5px var(--sp-1);
+    padding:3px 4px;
     margin-bottom:3px;
-    font-size:.68rem;
+    font-size:.64rem;
     cursor:pointer;
-    line-height:1.25;
+    line-height:1.2;
     transition:opacity .15s var(--ease-out);
     min-width:0;
     max-width:100%;
   }
   .chip:hover{filter:brightness(.97);}
   .chip.done{opacity:.45;text-decoration:line-through;}
-  .chip .dot{width:7px;height:7px;flex-shrink:0;}
-  .chip input{width:auto;margin:0;cursor:pointer;flex-shrink:0;}
-  .chip .chip-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .chip .dot{width:6px;height:6px;flex-shrink:0;}
+  .chip .chip-label{overflow:hidden;min-width:0;white-space:nowrap;text-overflow:ellipsis;}
+
+  .view-toggle{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-4);}
+  .view-tab{
+    flex:1;padding:var(--sp-2) var(--sp-3);border-radius:var(--radius-sm);border:1px solid var(--line);
+    background:var(--card);color:var(--sub);font-size:var(--fs-sm);font-weight:600;cursor:pointer;
+    transition:background .15s var(--ease-out), color .15s var(--ease-out), border-color .15s var(--ease-out);
+  }
+  .view-tab.active{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .view-tab:not(.active):hover{border-color:var(--accent);color:var(--accent);}
+
+  .week-list{display:flex;flex-direction:column;gap:var(--sp-3);}
+  .week-day{border:1px solid var(--line);border-radius:var(--radius-md);padding:var(--sp-3) var(--sp-4);}
+  .week-day.is-today{border-color:var(--accent);background:var(--today-bg);}
+  .week-day-header{display:flex;align-items:baseline;gap:var(--sp-2);margin-bottom:var(--sp-2);}
+  .week-day-name{font-weight:700;font-size:var(--fs-base);}
+  .week-day.is-today .week-day-name{color:var(--accent);}
+  .week-day-date{font-size:var(--fs-xs);color:var(--sub);}
+  .week-items{display:flex;flex-direction:column;gap:var(--sp-1);}
+  .week-item{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) 0;cursor:pointer;}
+  .week-item input{width:17px;height:17px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;}
+  .week-item .dot{width:9px;height:9px;flex-shrink:0;}
+  .week-item span.wname{font-size:var(--fs-sm);}
+  .week-item.done span.wname{opacity:.5;text-decoration:line-through;}
+  .week-day-empty{font-size:var(--fs-xs);color:var(--sub);}
 
   .empty-state{color:var(--sub);font-size:var(--fs-sm);text-align:center;padding:var(--sp-6) var(--sp-4);}
   .empty-state .big{font-size:2rem;margin-bottom:var(--sp-2);}
@@ -328,12 +365,16 @@
 
     <div class="col">
       <div class="card">
+        <div class="view-toggle">
+          <button class="view-tab active" id="viewMonthBtn">חודשי</button>
+          <button class="view-tab" id="viewWeekBtn">שבועי</button>
+        </div>
         <div class="month-nav">
           <div class="navbtns">
-            <button id="prevMonth" aria-label="חודש קודם">‹</button>
-            <button id="nextMonth" aria-label="חודש הבא">›</button>
+            <button id="prevPeriod" aria-label="הקודם">‹</button>
+            <button id="nextPeriod" aria-label="הבא">›</button>
           </div>
-          <h2 id="monthTitle"></h2>
+          <h2 id="periodTitle"></h2>
           <button class="preset-btn" id="todayBtn">היום</button>
         </div>
 
@@ -385,14 +426,30 @@ let db = null;
 let dbMode = 'connecting'; // 'connecting' | 'live' | 'local'
 let routines = [];
 let routinesLoaded = false;
-let completionsForViewedMonth = {};
+let localCompletions = {}; // flat map, used only when dbMode !== 'live'
+let completionsCache = {}; // monthKey -> {data}, used when dbMode === 'live'
+let completionsUnsubs = {}; // monthKey -> unsubscribe fn
 let unsubRoutines = null;
-let unsubCompletions = null;
-let viewYear, viewMonth;
+let viewMode = 'month'; // 'month' | 'week'
+let viewYear, viewMonth; // for month view
+let weekStart; // Date (Sunday), for week view
 {
   const t = new Date();
   viewYear = t.getFullYear();
   viewMonth = t.getMonth();
+  weekStart = startOfWeek(t);
+}
+
+function startOfWeek(d){
+  const x = new Date(d);
+  x.setDate(x.getDate() - x.getDay());
+  x.setHours(0,0,0,0);
+  return x;
+}
+function weekDates(start){
+  const days = [];
+  for(let i=0;i<7;i++){ const d = new Date(start); d.setDate(start.getDate()+i); days.push(d); }
+  return days;
 }
 
 function loadLocal(){
@@ -404,8 +461,21 @@ function loadLocal(){
 }
 function saveLocal(){
   try{
-    localStorage.setItem(LOCAL_KEY, JSON.stringify({ routines, completions: window.__localCompletions || {} }));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify({ routines, completions: localCompletions }));
   }catch(e){}
+}
+
+function isDone(dateISOStr, routineId){
+  const key = dateISOStr + '_' + routineId;
+  if(dbMode !== 'live') return !!localCompletions[key];
+  const mk = dateISOStr.slice(0,7);
+  const data = completionsCache[mk];
+  return !!(data && data[key]);
+}
+
+function getRoutinesForDate(dateObj){
+  const { dayMap } = buildMonthSchedule(dateObj.getFullYear(), dateObj.getMonth());
+  return dayMap[dateObj.getDate()] || [];
 }
 
 // ---------- Scheduling (pure) ----------
@@ -484,7 +554,7 @@ async function initBackend(){
     dbMode = 'live';
     await maybeSeedDefaults();
     subscribeRoutines();
-    subscribeCompletions(viewYear, viewMonth);
+    syncCompletionSubscriptions(neededMonthKeys());
   }catch(e){
     showError('לא ניתן היה להתחבר למסד הנתונים, עובד במצב מקומי: ' + (e && e.message ? e.message : e));
     dbMode = 'local';
@@ -496,16 +566,15 @@ function initLocalMode(){
   const saved = loadLocal();
   if(saved && Array.isArray(saved.routines) && saved.routines.length){
     routines = saved.routines;
-    window.__localCompletions = saved.completions || {};
+    localCompletions = saved.completions || {};
   } else {
     routines = DEFAULT_ROUTINES.map((r,i)=>({
       id: 'local'+i, name: r.name, intervalDays: r.interval, startDate: todayISO(),
       color: COLORS[i % COLORS.length], active: true,
     }));
-    window.__localCompletions = {};
+    localCompletions = {};
     saveLocal();
   }
-  completionsForViewedMonth = window.__localCompletions;
   routinesLoaded = true;
   renderAll();
 }
@@ -538,29 +607,40 @@ function subscribeRoutines(){
   );
 }
 
-function subscribeCompletions(y, m){
-  if(!db) return;
-  if(unsubCompletions) unsubCompletions();
-  const ref = db.doc('completions/' + monthKey(y,m));
-  unsubCompletions = ref.onSnapshot(
-    snap=>{
-      completionsForViewedMonth = snap.exists ? (snap.data() || {}) : {};
-      renderCalendar();
-      renderTodayCard();
-    },
-    err=>{ showError('שגיאה בטעינת סימוני ביצוע: ' + err.message); }
-  );
+function neededMonthKeys(){
+  const keys = new Set();
+  keys.add(monthKey(new Date().getFullYear(), new Date().getMonth())); // today's card always needs this
+  if(viewMode === 'week'){
+    weekDates(weekStart).forEach(d=> keys.add(monthKey(d.getFullYear(), d.getMonth())));
+  } else {
+    keys.add(monthKey(viewYear, viewMonth));
+  }
+  return [...keys];
+}
+
+function syncCompletionSubscriptions(neededKeys){
+  if(dbMode !== 'live') return;
+  const neededSet = new Set(neededKeys);
+  Object.keys(completionsUnsubs).forEach(k=>{
+    if(!neededSet.has(k)){ completionsUnsubs[k](); delete completionsUnsubs[k]; delete completionsCache[k]; }
+  });
+  neededKeys.forEach(k=>{
+    if(completionsUnsubs[k]) return;
+    const ref = db.doc('completions/' + k);
+    completionsUnsubs[k] = ref.onSnapshot(
+      snap=>{ completionsCache[k] = snap.exists ? (snap.data() || {}) : {}; renderActiveView(); },
+      err=>{ showError('שגיאה בטעינת סימוני ביצוע: ' + err.message); }
+    );
+  });
 }
 
 async function toggleCompletion(dateISOStr, routineId){
   const key = dateISOStr + '_' + routineId;
   if(dbMode !== 'live'){
-    if(completionsForViewedMonth[key]) delete completionsForViewedMonth[key];
-    else completionsForViewedMonth[key] = true;
-    window.__localCompletions = completionsForViewedMonth;
+    if(localCompletions[key]) delete localCompletions[key];
+    else localCompletions[key] = true;
     saveLocal();
-    renderCalendar();
-    renderTodayCard();
+    renderActiveView();
     return;
   }
   try{
@@ -641,23 +721,20 @@ function renderTodayCard(){
       </div>`;
     return;
   }
-  const { dayMap } = buildMonthSchedule(viewYear, viewMonth);
   const now = new Date();
-  const isCurrentMonth = (now.getFullYear()===viewYear && now.getMonth()===viewMonth);
-  const todaysRoutines = isCurrentMonth ? (dayMap[now.getDate()] || []) : [];
+  const todaysRoutines = getRoutinesForDate(now);
   const iso = todayISO();
 
   const dateLabel = now.toLocaleDateString('he-IL', { weekday:'long', day:'numeric', month:'long' });
 
   let itemsHtml;
-  if(!isCurrentMonth){
-    itemsHtml = `<div class="today-empty">עברו לחודש הנוכחי כדי לראות את המשימות של היום.</div>`;
-  } else if(todaysRoutines.length === 0){
+  const pending = todaysRoutines.filter(r => !isDone(iso, r.id));
+  if(todaysRoutines.length === 0){
     itemsHtml = `<div class="today-empty">אין משימות מתוכננות להיום 🎉</div>`;
   } else {
     itemsHtml = '<div class="today-list">' + todaysRoutines.map(r=>{
       const key = iso + '_' + r.id;
-      const done = !!completionsForViewedMonth[key];
+      const done = isDone(iso, r.id);
       return `<label class="today-item ${done?'done':''}" data-key="${escapeHtml(key)}">
         <input type="checkbox" ${done?'checked':''} data-date="${iso}" data-rid="${escapeHtml(r.id)}">
         <span class="name">${escapeHtml(r.name)}</span>
@@ -665,11 +742,14 @@ function renderTodayCard(){
     }).join('') + '</div>';
   }
 
+  const remindDisabled = pending.length === 0;
   holder.innerHTML = `
     <div class="today-card">
       <p class="today-label">היום</p>
       <p class="today-date">${dateLabel}</p>
       ${itemsHtml}
+      <button class="remind-btn" id="remindBtn" ${remindDisabled?'disabled':''}>⏰ הוסף תזכורת למאוחר יותר</button>
+      <p class="remind-note" id="remindNote"></p>
     </div>`;
 
   holder.querySelectorAll('.today-item input').forEach(cb=>{
@@ -677,6 +757,24 @@ function renderTodayCard(){
       toggleCompletion(e.target.dataset.date, e.target.dataset.rid);
     });
   });
+
+  const remindBtn = document.getElementById('remindBtn');
+  if(remindBtn && !remindDisabled){
+    remindBtn.addEventListener('click', ()=> addReminderForPending(pending));
+  }
+}
+
+function addReminderForPending(pending){
+  const title = pending.length === 1
+    ? pending[0].name
+    : 'שגרות הבית: ' + pending.map(r=>r.name).join(', ');
+  const note = document.getElementById('remindNote');
+  try{
+    if(navigator.clipboard) navigator.clipboard.writeText(title).catch(()=>{});
+  }catch(e){}
+  const url = 'x-apple-reminderkit://remcdreminder/create?title=' + encodeURIComponent(title);
+  window.location.href = url;
+  if(note) note.textContent = 'אם אפליקציית התזכורות לא נפתחה: הטקסט "' + title + '" הועתק, אפשר להדביק ידנית.';
 }
 
 let editingRoutineId = null;
@@ -762,7 +860,7 @@ function renderRoutineList(){
 }
 
 function renderCalendar(){
-  document.getElementById('monthTitle').textContent = `${HEB_MONTHS[viewMonth]} ${viewYear}`;
+  document.getElementById('periodTitle').textContent = `${HEB_MONTHS[viewMonth]} ${viewYear}`;
 
   if(!routinesLoaded){
     document.getElementById('statsRow').innerHTML = Array.from({length:4}).map(()=>`<div class="skeleton skeleton-line" style="flex:1;height:44px;"></div>`).join('');
@@ -818,14 +916,11 @@ function renderCalendar(){
     td.appendChild(dn);
 
     dayMap[d].forEach(routine=>{
-      const key = iso + '_' + routine.id;
-      const done = !!completionsForViewedMonth[key];
-      const chip = document.createElement('label');
+      const done = isDone(iso, routine.id);
+      const chip = document.createElement('div');
       chip.className = 'chip' + (done?' done':'');
-      chip.innerHTML = `<input type="checkbox" ${done?'checked':''}><span class="dot" style="background:${routine.color}"></span><span class="chip-label">${escapeHtml(routine.name)}</span>`;
-      chip.querySelector('input').addEventListener('change', ()=>{
-        toggleCompletion(iso, routine.id);
-      });
+      chip.innerHTML = `<span class="dot" style="background:${routine.color}"></span><span class="chip-label">${escapeHtml(routine.name)}</span>`;
+      chip.addEventListener('click', ()=>{ toggleCompletion(iso, routine.id); });
       td.appendChild(chip);
     });
 
@@ -843,11 +938,73 @@ function renderCalendar(){
   holder.firstChild.appendChild(table);
 }
 
+const HEB_WEEKDAY_FULL = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+function renderWeek(){
+  const days = weekDates(weekStart);
+  const first = days[0], last = days[6];
+  const sameMonth = first.getMonth() === last.getMonth();
+  const label = sameMonth
+    ? `${first.getDate()}–${last.getDate()} ב${HEB_MONTHS[first.getMonth()]}`
+    : `${first.getDate()} ב${HEB_MONTHS[first.getMonth()]} – ${last.getDate()} ב${HEB_MONTHS[last.getMonth()]}`;
+  document.getElementById('periodTitle').textContent = label;
+  const staleHint = document.querySelector('.hint.overload-hint');
+  if(staleHint) staleHint.remove();
+
+  if(!routinesLoaded){
+    document.getElementById('statsRow').innerHTML = '';
+    document.getElementById('calHolder').innerHTML = `<div class="skeleton" style="height:420px;"></div>`;
+    return;
+  }
+
+  const todayStr = todayISO();
+  let total = 0;
+  const sections = days.map(d=>{
+    const iso = dateISO(d.getFullYear(), d.getMonth(), d.getDate());
+    const items = getRoutinesForDate(d);
+    total += items.length;
+    const isToday = iso === todayStr;
+    const itemsHtml = items.length === 0
+      ? `<div class="week-day-empty">אין משימות</div>`
+      : items.map(r=>{
+          const done = isDone(iso, r.id);
+          return `<label class="week-item ${done?'done':''}" data-date="${iso}" data-rid="${escapeHtml(r.id)}">
+            <input type="checkbox" ${done?'checked':''}>
+            <span class="dot" style="background:${r.color}"></span>
+            <span class="wname">${escapeHtml(r.name)}</span>
+          </label>`;
+        }).join('');
+    return `
+      <div class="week-day ${isToday?'is-today':''}">
+        <div class="week-day-header">
+          <span class="week-day-name">${HEB_WEEKDAY_FULL[d.getDay()]}</span>
+          <span class="week-day-date">${d.getDate()} ב${HEB_MONTHS[d.getMonth()]}</span>
+        </div>
+        <div class="week-items">${itemsHtml}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('statsRow').innerHTML = `<div class="stat"><b>${total}</b>ביצועים השבוע</div>`;
+  const holder = document.getElementById('calHolder');
+  holder.innerHTML = `<div class="week-list">${sections}</div>`;
+  holder.querySelectorAll('.week-item input').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      const row = e.target.closest('.week-item');
+      toggleCompletion(row.dataset.date, row.dataset.rid);
+    });
+  });
+}
+
+function renderActiveView(){
+  if(viewMode === 'week') renderWeek();
+  else renderCalendar();
+  renderTodayCard();
+}
+
 function renderAll(){
   renderOfflineBanner();
-  renderTodayCard();
   renderRoutineList();
-  renderCalendar();
+  renderActiveView();
 }
 
 // ---------- Events ----------
@@ -879,21 +1036,45 @@ document.getElementById('newName').addEventListener('keydown', (e)=>{
 
 function goToMonth(y, m){
   viewYear = y; viewMonth = m;
-  if(dbMode==='live') subscribeCompletions(viewYear, viewMonth);
-  renderCalendar();
-  renderTodayCard();
+  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  renderActiveView();
 }
-document.getElementById('prevMonth').addEventListener('click', ()=>{
-  let m = viewMonth-1, y = viewYear; if(m<0){m=11; y--;}
-  goToMonth(y, m);
+function goToWeek(newStart){
+  weekStart = newStart;
+  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  renderActiveView();
+}
+function setViewMode(mode){
+  if(viewMode === mode) return;
+  viewMode = mode;
+  document.getElementById('viewMonthBtn').classList.toggle('active', mode==='month');
+  document.getElementById('viewWeekBtn').classList.toggle('active', mode==='week');
+  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  renderActiveView();
+}
+document.getElementById('viewMonthBtn').addEventListener('click', ()=> setViewMode('month'));
+document.getElementById('viewWeekBtn').addEventListener('click', ()=> setViewMode('week'));
+
+document.getElementById('prevPeriod').addEventListener('click', ()=>{
+  if(viewMode === 'week'){
+    const d = new Date(weekStart); d.setDate(d.getDate()-7); goToWeek(d);
+  } else {
+    let m = viewMonth-1, y = viewYear; if(m<0){m=11; y--;}
+    goToMonth(y, m);
+  }
 });
-document.getElementById('nextMonth').addEventListener('click', ()=>{
-  let m = viewMonth+1, y = viewYear; if(m>11){m=0; y++;}
-  goToMonth(y, m);
+document.getElementById('nextPeriod').addEventListener('click', ()=>{
+  if(viewMode === 'week'){
+    const d = new Date(weekStart); d.setDate(d.getDate()+7); goToWeek(d);
+  } else {
+    let m = viewMonth+1, y = viewYear; if(m>11){m=0; y++;}
+    goToMonth(y, m);
+  }
 });
 document.getElementById('todayBtn').addEventListener('click', ()=>{
   const t = new Date();
-  goToMonth(t.getFullYear(), t.getMonth());
+  if(viewMode === 'week') goToWeek(startOfWeek(t));
+  else goToMonth(t.getFullYear(), t.getMonth());
 });
 
 renderAll();
