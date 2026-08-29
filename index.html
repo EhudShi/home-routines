@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>שגרות הבית</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3d6b5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="שגרות הבית">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon-180.png">
+<link rel="apple-touch-icon" sizes="167x167" href="apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="152x152" href="apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="120x120" href="apple-touch-icon-120.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<style>
+  :root{
+    --bg:#eef0e8;
+    --card:#ffffff;
+    --card-alt:#f6f5ee;
+    --ink:#23271d;
+    --sub:#666d59;
+    --sub-2:#8a9080;
+    --line:#dee1d2;
+    --accent:#3d6b5c;
+    --accent-ink:#ffffff;
+    --accent-light:#e2ede7;
+    --accent-hover:#2f5647;
+    --danger:#b3543f;
+    --danger-light:#f7e8e4;
+    --warn:#a86a1f;
+    --warn-light:#f3e2c4;
+    --focus-ring:#79b39d;
+    --today-bg:#eaf3ee;
+    --skeleton:#e2e4d8;
+
+    --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px; --sp-8:64px;
+    --fs-xs:.72rem; --fs-sm:.82rem; --fs-base:.92rem; --fs-md:1.02rem; --fs-lg:1.2rem; --fs-xl:1.5rem; --fs-2xl:1.9rem;
+
+    --radius-sm:8px; --radius-md:12px; --radius-lg:18px;
+    --shadow-sm:0 1px 2px rgba(30,35,20,.05), 0 1px 1px rgba(30,35,20,.04);
+    --shadow-md:0 4px 14px rgba(30,35,20,.08), 0 1px 3px rgba(30,35,20,.05);
+    --ease-out:cubic-bezier(.16,1,.3,1);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171a13; --card:#20241a; --card-alt:#262b1f; --ink:#eceee2;
+      --sub:#a5ab97; --sub-2:#7d8471; --line:#333a29;
+      --accent:#71b89c; --accent-ink:#0c1410; --accent-light:#293d33; --accent-hover:#86c7ad;
+      --danger:#e08a72; --danger-light:#3a2620; --warn:#e3ab5e; --warn-light:#3d3320;
+      --focus-ring:#3f6b5a; --today-bg:#233327; --skeleton:#2b3123;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171a13; --card:#20241a; --card-alt:#262b1f; --ink:#eceee2;
+    --sub:#a5ab97; --sub-2:#7d8471; --line:#333a29;
+    --accent:#71b89c; --accent-ink:#0c1410; --accent-light:#293d33; --accent-hover:#86c7ad;
+    --danger:#e08a72; --danger-light:#3a2620; --warn:#e3ab5e; --warn-light:#3d3320;
+    --focus-ring:#3f6b5a; --today-bg:#233327; --skeleton:#2b3123;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition-duration:.001ms !important; } }
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    direction:rtl;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    padding:var(--sp-5);
+    padding-top:max(var(--sp-5), env(safe-area-inset-top));
+    padding-bottom:max(var(--sp-5), env(safe-area-inset-bottom));
+    line-height:1.5;
+    font-size:var(--fs-base);
+    overflow-x:hidden;
+  }
+  .cal-scroll{overflow-x:auto;}
+  .wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:var(--sp-5);}
+  header.top{display:flex;flex-direction:column;gap:var(--sp-1);}
+  h1{font-size:var(--fs-2xl);margin:0;font-weight:700;letter-spacing:-.01em;text-wrap:balance;}
+  .subtitle{color:var(--sub);margin:0;font-size:var(--fs-sm);}
+
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:var(--sp-5);align-items:start;}
+  @media (max-width:860px){.grid{grid-template-columns:1fr;}}
+  .grid > .col{min-width:0;}
+  .col{display:flex;flex-direction:column;gap:var(--sp-5);}
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-sm);
+    padding:var(--sp-5);
+  }
+  .card h2{font-size:var(--fs-md);margin:0 0 var(--sp-4);display:flex;align-items:center;gap:var(--sp-2);font-weight:600;}
+
+  .today-card{
+    background:linear-gradient(160deg, var(--accent) 0%, var(--accent-hover) 100%);
+    color:var(--accent-ink);
+    border-radius:var(--radius-lg);
+    padding:var(--sp-5) var(--sp-5);
+    box-shadow:var(--shadow-md);
+  }
+  .today-card .today-label{font-size:var(--fs-sm);opacity:.85;margin:0 0 var(--sp-1);font-weight:600;letter-spacing:.02em;}
+  .today-card .today-date{font-size:var(--fs-lg);margin:0 0 var(--sp-4);font-weight:700;text-wrap:balance;}
+  .today-list{display:flex;flex-direction:column;gap:var(--sp-2);}
+  .today-item{
+    display:flex;align-items:center;gap:var(--sp-3);
+    background:rgba(255,255,255,.16);
+    border-radius:var(--radius-md);
+    padding:var(--sp-3) var(--sp-4);
+    cursor:pointer;
+    transition:background .18s var(--ease-out);
+  }
+  :root[data-theme="dark"] .today-item{ background:rgba(0,0,0,.18); }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]) .today-item{ background:rgba(0,0,0,.18); } }
+  .today-item:hover{background:rgba(255,255,255,.26);}
+  .today-item input{width:18px;height:18px;accent-color:var(--accent-ink);flex-shrink:0;cursor:pointer;}
+  .today-item span.name{font-size:var(--fs-base);font-weight:500;}
+  .today-item.done span.name{opacity:.6;text-decoration:line-through;}
+  .today-empty{font-size:var(--fs-base);opacity:.9;padding:var(--sp-2) 0;}
+
+  label{display:block;font-size:var(--fs-sm);color:var(--sub);margin-bottom:var(--sp-1);font-weight:500;}
+  input[type=text], input[type=number]{
+    width:100%;
+    padding:var(--sp-2) var(--sp-3);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    font-size:var(--fs-base);
+    background:var(--card);
+    color:var(--ink);
+    font-family:inherit;
+    transition:border-color .15s var(--ease-out);
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible, .chip input:focus-visible{
+    outline:2px solid var(--focus-ring);outline-offset:1px;border-color:var(--accent);
+  }
+  .field{margin-bottom:var(--sp-3);}
+  .presets{display:flex;gap:var(--sp-2);margin-top:var(--sp-2);flex-wrap:wrap;}
+  .preset-btn{
+    border:1px solid var(--line);
+    background:var(--card);
+    border-radius:20px;
+    padding:var(--sp-1) var(--sp-3);
+    font-size:var(--fs-xs);
+    cursor:pointer;
+    color:var(--sub);
+    transition:border-color .15s var(--ease-out), color .15s var(--ease-out);
+  }
+  .preset-btn:hover{border-color:var(--accent);color:var(--accent);}
+  button.primary{
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    border-radius:var(--radius-sm);
+    padding:var(--sp-3) var(--sp-4);
+    font-size:var(--fs-base);
+    font-weight:600;
+    cursor:pointer;
+    width:100%;
+    margin-top:var(--sp-1);
+    transition:background .15s var(--ease-out), transform .1s var(--ease-out);
+  }
+  button.primary:hover{background:var(--accent-hover);}
+  button.primary:active{transform:scale(.98);}
+  button.primary:disabled{opacity:.55;cursor:not-allowed;}
+
+  .field-error{color:var(--danger);font-size:var(--fs-xs);margin-top:var(--sp-2);min-height:1em;}
+  .routine-item-editing{gap:var(--sp-2);}
+  .routine-item-editing input[type=text]{flex:1;padding:var(--sp-1) var(--sp-2);font-size:var(--fs-sm);}
+  .routine-item-editing input[type=number]{width:60px;padding:var(--sp-1) var(--sp-2);font-size:var(--fs-sm);}
+  .confirm-text{flex:1;font-size:var(--fs-sm);color:var(--danger);}
+
+  .routine-item{
+    display:flex;
+    align-items:center;
+    gap:var(--sp-3);
+    padding:var(--sp-3) var(--sp-1);
+    border-bottom:1px solid var(--line);
+    transition:background .15s var(--ease-out);
+  }
+  .routine-item:hover{background:var(--card-alt);}
+  .routine-item:last-child{border-bottom:none;}
+  .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+  .routine-name{flex:1;font-size:var(--fs-base);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .routine-freq{font-size:var(--fs-xs);color:var(--sub);white-space:nowrap;}
+  .icon-btn{
+    background:none;border:none;cursor:pointer;color:var(--sub);
+    font-size:var(--fs-base);padding:var(--sp-1) var(--sp-2);border-radius:var(--radius-sm);
+    transition:background .15s var(--ease-out), color .15s var(--ease-out);
+  }
+  .icon-btn:hover{background:var(--accent-light);color:var(--accent);}
+  .icon-btn.danger:hover{background:var(--danger-light);color:var(--danger);}
+
+  .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-4);}
+  .month-nav h2{margin:0;font-size:var(--fs-lg);}
+  .month-nav .navbtns button{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius-sm);
+    width:32px;height:32px;cursor:pointer;font-size:var(--fs-md);color:var(--ink);
+    transition:border-color .15s var(--ease-out);
+  }
+  .month-nav .navbtns button:hover{border-color:var(--accent);color:var(--accent);}
+  .month-nav .navbtns{display:flex;gap:var(--sp-2);}
+
+  .stats-row{display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--sp-4);}
+  .stat{
+    background:var(--accent-light);
+    border-radius:var(--radius-md);
+    padding:var(--sp-2) var(--sp-4);
+    font-size:var(--fs-sm);
+    color:var(--accent);
+    flex:1;
+    min-width:120px;
+    text-align:center;
+  }
+  .stat.warn{background:var(--warn-light);color:var(--warn);}
+  .stat b{display:block;font-size:var(--fs-lg);font-variant-numeric:tabular-nums;}
+
+  table.cal{width:100%;border-collapse:collapse;table-layout:fixed;}
+  table.cal th{
+    font-size:var(--fs-xs);color:var(--sub);font-weight:600;padding:var(--sp-2) 0;text-align:center;
+  }
+  table.cal td{
+    border:1px solid var(--line);
+    vertical-align:top;
+    height:98px;
+    padding:var(--sp-1) var(--sp-2);
+    font-size:var(--fs-xs);
+    position:relative;
+    overflow:hidden;
+  }
+  table.cal td.empty{background:var(--card-alt);}
+  table.cal td .daynum{
+    font-size:var(--fs-xs);color:var(--sub);margin-bottom:var(--sp-1);font-weight:600;font-variant-numeric:tabular-nums;
+  }
+  table.cal td.today .daynum{color:var(--accent);}
+  table.cal td.today{background:var(--today-bg);border-color:var(--accent);}
+  .chip{
+    display:flex;
+    align-items:center;
+    gap:var(--sp-1);
+    background:var(--card-alt);
+    border-radius:6px;
+    padding:5px var(--sp-1);
+    margin-bottom:3px;
+    font-size:.68rem;
+    cursor:pointer;
+    line-height:1.25;
+    transition:opacity .15s var(--ease-out);
+    min-width:0;
+    max-width:100%;
+  }
+  .chip:hover{filter:brightness(.97);}
+  .chip.done{opacity:.45;text-decoration:line-through;}
+  .chip .dot{width:7px;height:7px;flex-shrink:0;}
+  .chip input{width:auto;margin:0;cursor:pointer;flex-shrink:0;}
+  .chip .chip-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+
+  .empty-state{color:var(--sub);font-size:var(--fs-sm);text-align:center;padding:var(--sp-6) var(--sp-4);}
+  .empty-state .big{font-size:2rem;margin-bottom:var(--sp-2);}
+  .hint{font-size:var(--fs-xs);color:var(--sub);margin-top:var(--sp-2);line-height:1.5;}
+  .footer-note{font-size:var(--fs-xs);color:var(--sub-2);margin-top:var(--sp-2);text-align:center;}
+
+  .skeleton{background:linear-gradient(90deg, var(--skeleton) 25%, var(--card-alt) 37%, var(--skeleton) 63%);
+    background-size:400% 100%; animation:shimmer 1.4s ease infinite; border-radius:var(--radius-sm);}
+  @keyframes shimmer{0%{background-position:100% 50%;}100%{background-position:0 50%;}}
+  .skeleton-line{height:14px;margin-bottom:var(--sp-2);}
+  .skeleton-card{height:96px;border-radius:var(--radius-md);}
+
+  .error-banner{
+    background:var(--danger-light);color:var(--danger);border-radius:var(--radius-md);
+    padding:var(--sp-3) var(--sp-4);font-size:var(--fs-sm);margin-bottom:var(--sp-4);
+  }
+  .offline-banner{
+    background:var(--warn-light);color:var(--warn);border-radius:var(--radius-md);
+    padding:var(--sp-2) var(--sp-4);font-size:var(--fs-xs);margin-bottom:var(--sp-4);text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1>🏠 שגרות הבית</h1>
+    <p class="subtitle">כל שגרה עם התדירות שלה, ולו"ז חודשי שמפזר את המשימות כדי שהעומס היומי יישאר קטן.</p>
+  </header>
+
+  <div id="offlineBanner"></div>
+  <div id="errorBanner"></div>
+
+  <div id="todayCardHolder"></div>
+
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <h2>➕ הוספת שגרה</h2>
+        <div class="field">
+          <label>שם השגרה</label>
+          <input type="text" id="newName" placeholder="למשל: ניקוי שיש">
+        </div>
+        <div class="field">
+          <label>לבצע כל כמה ימים</label>
+          <input type="number" id="newInterval" min="1" value="7">
+          <div class="presets">
+            <button class="preset-btn" data-v="1">יומי</button>
+            <button class="preset-btn" data-v="3">כל 3 ימים</button>
+            <button class="preset-btn" data-v="7">שבועי</button>
+            <button class="preset-btn" data-v="14">דו-שבועי</button>
+            <button class="preset-btn" data-v="30">חודשי</button>
+          </div>
+        </div>
+        <button class="primary" id="addBtn">הוסף שגרה</button>
+        <div class="field-error" id="addError"></div>
+      </div>
+
+      <div class="card">
+        <h2>📋 השגרות שלי (<span id="routineCount">0</span>)</h2>
+        <div id="routineList"></div>
+        <div class="hint">לחיצה על ✎ מאפשרת לערוך שם/תדירות. שינוי תדירות משפיע על הלו"ז מהחודש הנוכחי והלאה.</div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card">
+        <div class="month-nav">
+          <div class="navbtns">
+            <button id="prevMonth" aria-label="חודש קודם">‹</button>
+            <button id="nextMonth" aria-label="חודש הבא">›</button>
+          </div>
+          <h2 id="monthTitle"></h2>
+          <button class="preset-btn" id="todayBtn">היום</button>
+        </div>
+
+        <div class="stats-row" id="statsRow"></div>
+
+        <div id="calHolder"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer-note" id="footerNote">מתחבר…</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+const COLORS = ['#3d6b5c','#8a5a44','#4a6fa5','#a35a8c','#6b8e23','#b3543f','#5c6bc0','#c8862b','#2e8b8b','#8b6b4a','#6a4c93','#4a7c59'];
+const HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const HEB_DAYS = ['א','ב','ג','ד','ה','ו','ש'];
+const LOCAL_KEY = 'homeRoutinesLocal_v1';
+
+const DEFAULT_ROUTINES = [
+  {name:'ניקוי שירותים קטנים', interval:4},
+  {name:'ניקוי שירותים גדולים', interval:7},
+  {name:'ניקוי אמבטיה', interval:7},
+  {name:'ניקוי אבק מהפסנתר', interval:14},
+  {name:'ניקוי אבק במקלחת הקטנה', interval:14},
+  {name:'ניקוי אבק במקלחת הגדולה', interval:14},
+  {name:'ניקוי שיש', interval:5},
+  {name:'ניקוי כיריים', interval:7},
+  {name:'ניקוי מקרר', interval:30},
+  {name:'השקיית עציצים בסלון', interval:7},
+  {name:'השקיית עציצים בשאר הבית', interval:7},
+  {name:'שטיפת מרפסת', interval:14},
+];
+
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function dateISO(y,m,d){ return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); }
+function parseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function monthKey(y,m){ return y+'-'+String(m+1).padStart(2,'0'); }
+function escapeHtml(s){ const div = document.createElement('div'); div.textContent = s; return div.innerHTML; }
+
+// ---------- App state ----------
+let db = null;
+let dbMode = 'connecting'; // 'connecting' | 'live' | 'local'
+let routines = [];
+let routinesLoaded = false;
+let completionsForViewedMonth = {};
+let unsubRoutines = null;
+let unsubCompletions = null;
+let viewYear, viewMonth;
+{
+  const t = new Date();
+  viewYear = t.getFullYear();
+  viewMonth = t.getMonth();
+}
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LOCAL_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function saveLocal(){
+  try{
+    localStorage.setItem(LOCAL_KEY, JSON.stringify({ routines, completions: window.__localCompletions || {} }));
+  }catch(e){}
+}
+
+// ---------- Scheduling (pure) ----------
+function getDueDatesInMonth(routine, year, month){
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month+1, 0);
+  const start = parseISO(routine.startDate || todayISO());
+  start.setHours(0,0,0,0);
+  const interval = Math.max(1, routine.intervalDays);
+  if(start > monthEnd) return [];
+  let cursor = new Date(start);
+  while(cursor < monthStart){ cursor.setDate(cursor.getDate() + interval); }
+  const dates = [];
+  let guard = 0;
+  while(cursor <= monthEnd && guard < 500){
+    dates.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + interval);
+    guard++;
+  }
+  return dates;
+}
+
+function buildMonthSchedule(year, month){
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const raw = [];
+  routines.forEach(routine=>{
+    if(routine.active === false) return;
+    getDueDatesInMonth(routine, year, month).forEach(d=>{ raw.push({ routine, day: d.getDate() }); });
+  });
+
+  const cap = Math.max(1, Math.ceil(raw.length / daysInMonth) || 1);
+  raw.sort((a,b)=> a.routine.intervalDays - b.routine.intervalDays || a.day - b.day);
+
+  const dayLoad = new Array(daysInMonth+1).fill(0);
+  const dayMap = {};
+  for(let d=1; d<=daysInMonth; d++) dayMap[d] = [];
+
+  raw.forEach(item=>{
+    const ideal = Math.min(Math.max(item.day,1), daysInMonth);
+    const searchLimit = Math.max(3, Math.floor(item.routine.intervalDays/2));
+    let placed = false;
+    if(dayLoad[ideal] < cap){
+      dayMap[ideal].push(item.routine); dayLoad[ideal]++; placed = true;
+    } else {
+      for(let d=1; d<=searchLimit && !placed; d++){
+        for(const cand of [ideal-d, ideal+d]){
+          if(cand>=1 && cand<=daysInMonth && dayLoad[cand] < cap){
+            dayMap[cand].push(item.routine); dayLoad[cand]++; placed = true; break;
+          }
+        }
+      }
+    }
+    if(!placed){
+      let bestDay = ideal, bestLoad = Infinity;
+      for(let d=Math.max(1,ideal-searchLimit); d<=Math.min(daysInMonth,ideal+searchLimit); d++){
+        if(dayLoad[d] < bestLoad){ bestLoad = dayLoad[d]; bestDay = d; }
+      }
+      dayMap[bestDay].push(item.routine); dayLoad[bestDay]++;
+    }
+  });
+
+  return { dayMap, daysInMonth, totalAssignments: raw.length, cap };
+}
+
+// ---------- Backend layer (Firestore, with localStorage fallback) ----------
+async function initBackend(){
+  const cfg = window.FIREBASE_CONFIG;
+  if(!cfg || !window.firebase){
+    dbMode = 'local';
+    initLocalMode();
+    return;
+  }
+  try{
+    firebase.initializeApp(cfg);
+    db = firebase.firestore();
+    dbMode = 'live';
+    await maybeSeedDefaults();
+    subscribeRoutines();
+    subscribeCompletions(viewYear, viewMonth);
+  }catch(e){
+    showError('לא ניתן היה להתחבר למסד הנתונים, עובד במצב מקומי: ' + (e && e.message ? e.message : e));
+    dbMode = 'local';
+    initLocalMode();
+  }
+}
+
+function initLocalMode(){
+  const saved = loadLocal();
+  if(saved && Array.isArray(saved.routines) && saved.routines.length){
+    routines = saved.routines;
+    window.__localCompletions = saved.completions || {};
+  } else {
+    routines = DEFAULT_ROUTINES.map((r,i)=>({
+      id: 'local'+i, name: r.name, intervalDays: r.interval, startDate: todayISO(),
+      color: COLORS[i % COLORS.length], active: true,
+    }));
+    window.__localCompletions = {};
+    saveLocal();
+  }
+  completionsForViewedMonth = window.__localCompletions;
+  routinesLoaded = true;
+  renderAll();
+}
+
+async function maybeSeedDefaults(){
+  try{
+    const marker = db.doc('meta/seed');
+    const snap = await marker.get();
+    if(snap.exists) return;
+    for(let i=0;i<DEFAULT_ROUTINES.length;i++){
+      const r = DEFAULT_ROUTINES[i];
+      await db.collection('routines').add({
+        name: r.name, intervalDays: r.interval, startDate: todayISO(),
+        color: COLORS[i % COLORS.length], active: true,
+      });
+    }
+    await marker.set({ done:true, at: todayISO() });
+  }catch(e){ showError('לא ניתן היה לטעון שגרות ברירת מחדל: ' + (e && e.message ? e.message : e)); }
+}
+
+function subscribeRoutines(){
+  if(unsubRoutines) unsubRoutines();
+  unsubRoutines = db.collection('routines').onSnapshot(
+    snap=>{
+      routines = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+      routinesLoaded = true;
+      renderAll();
+    },
+    err=>{ showError('שגיאה בטעינת השגרות: ' + err.message); }
+  );
+}
+
+function subscribeCompletions(y, m){
+  if(!db) return;
+  if(unsubCompletions) unsubCompletions();
+  const ref = db.doc('completions/' + monthKey(y,m));
+  unsubCompletions = ref.onSnapshot(
+    snap=>{
+      completionsForViewedMonth = snap.exists ? (snap.data() || {}) : {};
+      renderCalendar();
+      renderTodayCard();
+    },
+    err=>{ showError('שגיאה בטעינת סימוני ביצוע: ' + err.message); }
+  );
+}
+
+async function toggleCompletion(dateISOStr, routineId){
+  const key = dateISOStr + '_' + routineId;
+  if(dbMode !== 'live'){
+    if(completionsForViewedMonth[key]) delete completionsForViewedMonth[key];
+    else completionsForViewedMonth[key] = true;
+    window.__localCompletions = completionsForViewedMonth;
+    saveLocal();
+    renderCalendar();
+    renderTodayCard();
+    return;
+  }
+  try{
+    const monthK = dateISOStr.slice(0,7);
+    const ref = db.doc('completions/' + monthK);
+    const snap = await ref.get();
+    const data = snap.exists ? { ...snap.data() } : {};
+    if(data[key]) delete data[key]; else data[key] = true;
+    await ref.set(data);
+  }catch(e){ showError('לא ניתן היה לשמור סימון ביצוע: ' + (e && e.message ? e.message : e)); }
+}
+
+async function addRoutine(name, interval){
+  if(dbMode !== 'live'){
+    routines.push({ id:'local'+Date.now(), name, intervalDays: interval, startDate: todayISO(), color: COLORS[routines.length % COLORS.length], active:true });
+    saveLocal();
+    renderAll();
+    return;
+  }
+  try{
+    await db.collection('routines').add({ name, intervalDays: interval, startDate: todayISO(), color: COLORS[routines.length % COLORS.length], active:true });
+  }catch(e){ showError('לא ניתן היה להוסיף שגרה: ' + (e && e.message ? e.message : e)); }
+}
+
+async function updateRoutine(id, patch){
+  if(dbMode !== 'live'){
+    const r = routines.find(x=>x.id===id);
+    if(r) Object.assign(r, patch);
+    saveLocal();
+    renderAll();
+    return;
+  }
+  try{ await db.doc('routines/' + id).update(patch); }
+  catch(e){ showError('לא ניתן היה לעדכן שגרה: ' + (e && e.message ? e.message : e)); }
+}
+
+async function removeRoutine(id){
+  if(dbMode !== 'live'){
+    routines = routines.filter(r=>r.id!==id);
+    saveLocal();
+    renderAll();
+    return;
+  }
+  try{ await db.doc('routines/' + id).delete(); }
+  catch(e){ showError('לא ניתן היה למחוק שגרה: ' + (e && e.message ? e.message : e)); }
+}
+
+function showError(msg){
+  const el = document.getElementById('errorBanner');
+  el.innerHTML = `<div class="error-banner">⚠️ ${escapeHtml(msg)}</div>`;
+  console.error(msg);
+}
+
+// ---------- Rendering ----------
+function renderOfflineBanner(){
+  const el = document.getElementById('offlineBanner');
+  const footer = document.getElementById('footerNote');
+  if(dbMode === 'local'){
+    el.innerHTML = `<div class="offline-banner">מצב מקומי — הנתונים נשמרים רק במכשיר הזה ולא מסונכרנים.</div>`;
+    footer.textContent = 'נשמר מקומית בדפדפן.';
+  } else if(dbMode === 'live'){
+    el.innerHTML = '';
+    footer.textContent = 'הנתונים נשמרים בענן ומסונכרנים בין המכשירים שלך.';
+  } else {
+    el.innerHTML = '';
+    footer.textContent = 'מתחבר…';
+  }
+}
+
+function renderTodayCard(){
+  const holder = document.getElementById('todayCardHolder');
+  if(!routinesLoaded){
+    holder.innerHTML = `
+      <div class="card">
+        <div class="skeleton skeleton-line" style="width:30%"></div>
+        <div class="skeleton skeleton-line" style="width:50%;height:20px;margin-bottom:16px;"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>`;
+    return;
+  }
+  const { dayMap } = buildMonthSchedule(viewYear, viewMonth);
+  const now = new Date();
+  const isCurrentMonth = (now.getFullYear()===viewYear && now.getMonth()===viewMonth);
+  const todaysRoutines = isCurrentMonth ? (dayMap[now.getDate()] || []) : [];
+  const iso = todayISO();
+
+  const dateLabel = now.toLocaleDateString('he-IL', { weekday:'long', day:'numeric', month:'long' });
+
+  let itemsHtml;
+  if(!isCurrentMonth){
+    itemsHtml = `<div class="today-empty">עברו לחודש הנוכחי כדי לראות את המשימות של היום.</div>`;
+  } else if(todaysRoutines.length === 0){
+    itemsHtml = `<div class="today-empty">אין משימות מתוכננות להיום 🎉</div>`;
+  } else {
+    itemsHtml = '<div class="today-list">' + todaysRoutines.map(r=>{
+      const key = iso + '_' + r.id;
+      const done = !!completionsForViewedMonth[key];
+      return `<label class="today-item ${done?'done':''}" data-key="${escapeHtml(key)}">
+        <input type="checkbox" ${done?'checked':''} data-date="${iso}" data-rid="${escapeHtml(r.id)}">
+        <span class="name">${escapeHtml(r.name)}</span>
+      </label>`;
+    }).join('') + '</div>';
+  }
+
+  holder.innerHTML = `
+    <div class="today-card">
+      <p class="today-label">היום</p>
+      <p class="today-date">${dateLabel}</p>
+      ${itemsHtml}
+    </div>`;
+
+  holder.querySelectorAll('.today-item input').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      toggleCompletion(e.target.dataset.date, e.target.dataset.rid);
+    });
+  });
+}
+
+let editingRoutineId = null;
+let confirmingDeleteId = null;
+
+function renderRoutineList(){
+  const holder = document.getElementById('routineList');
+  document.getElementById('routineCount').textContent = routines.length;
+
+  if(!routinesLoaded){
+    holder.innerHTML = Array.from({length:4}).map(()=>`<div class="skeleton skeleton-line"></div>`).join('');
+    return;
+  }
+  if(routines.length === 0){
+    holder.innerHTML = `<div class="empty-state"><div class="big">🧹</div>עדיין לא נוספו שגרות.<br>הוסיפו את הראשונה למעלה.</div>`;
+    return;
+  }
+  holder.innerHTML = '';
+  routines
+    .slice()
+    .sort((a,b)=>a.intervalDays-b.intervalDays)
+    .forEach(routine=>{
+      const row = document.createElement('div');
+
+      if(editingRoutineId === routine.id){
+        row.className = 'routine-item routine-item-editing';
+        row.innerHTML = `
+          <input type="text" class="edit-name" value="${escapeHtml(routine.name)}">
+          <input type="number" class="edit-interval" min="1" value="${routine.intervalDays}">
+          <button class="icon-btn" title="שמירה" data-save>✔</button>
+          <button class="icon-btn danger" title="ביטול" data-cancel-edit>✕</button>
+        `;
+        holder.appendChild(row);
+        const nameInput = row.querySelector('.edit-name');
+        const intervalInput = row.querySelector('.edit-interval');
+        const save = ()=>{
+          const newName = nameInput.value.trim();
+          const n = parseInt(intervalInput.value,10);
+          const patch = {};
+          if(newName) patch.name = newName;
+          if(!isNaN(n) && n > 0) patch.intervalDays = n;
+          editingRoutineId = null;
+          if(Object.keys(patch).length) updateRoutine(routine.id, patch);
+          else renderRoutineList();
+        };
+        row.querySelector('[data-save]').addEventListener('click', save);
+        row.querySelector('[data-cancel-edit]').addEventListener('click', ()=>{ editingRoutineId = null; renderRoutineList(); });
+        [nameInput, intervalInput].forEach(inp=>inp.addEventListener('keydown', e=>{
+          if(e.key === 'Enter') save();
+          if(e.key === 'Escape'){ editingRoutineId = null; renderRoutineList(); }
+        }));
+        return;
+      }
+
+      if(confirmingDeleteId === routine.id){
+        row.className = 'routine-item';
+        row.innerHTML = `
+          <span class="confirm-text">למחוק את "${escapeHtml(routine.name)}"?</span>
+          <button class="icon-btn danger" title="אישור מחיקה" data-confirm-del>מחק</button>
+          <button class="icon-btn" title="ביטול" data-cancel-del>ביטול</button>
+        `;
+        holder.appendChild(row);
+        row.querySelector('[data-confirm-del]').addEventListener('click', ()=>{
+          confirmingDeleteId = null;
+          removeRoutine(routine.id);
+        });
+        row.querySelector('[data-cancel-del]').addEventListener('click', ()=>{ confirmingDeleteId = null; renderRoutineList(); });
+        return;
+      }
+
+      row.className = 'routine-item';
+      row.innerHTML = `
+        <span class="dot" style="background:${routine.color}"></span>
+        <span class="routine-name">${escapeHtml(routine.name)}</span>
+        <span class="routine-freq">כל ${routine.intervalDays} ימים</span>
+        <button class="icon-btn" title="עריכה" data-edit>✎</button>
+        <button class="icon-btn danger" title="מחיקה" data-del>🗑</button>
+      `;
+      holder.appendChild(row);
+      row.querySelector('[data-edit]').addEventListener('click', ()=>{ editingRoutineId = routine.id; confirmingDeleteId = null; renderRoutineList(); });
+      row.querySelector('[data-del]').addEventListener('click', ()=>{ confirmingDeleteId = routine.id; editingRoutineId = null; renderRoutineList(); });
+    });
+}
+
+function renderCalendar(){
+  document.getElementById('monthTitle').textContent = `${HEB_MONTHS[viewMonth]} ${viewYear}`;
+
+  if(!routinesLoaded){
+    document.getElementById('statsRow').innerHTML = Array.from({length:4}).map(()=>`<div class="skeleton skeleton-line" style="flex:1;height:44px;"></div>`).join('');
+    document.getElementById('calHolder').innerHTML = `<div class="skeleton" style="height:420px;"></div>`;
+    return;
+  }
+
+  const { dayMap, daysInMonth, totalAssignments } = buildMonthSchedule(viewYear, viewMonth);
+
+  let zeroDays=0, oneDays=0, busyDays=0;
+  for(let d=1; d<=daysInMonth; d++){
+    const n = dayMap[d].length;
+    if(n===0) zeroDays++; else if(n===1) oneDays++; else busyDays++;
+  }
+  const statsRow = document.getElementById('statsRow');
+  statsRow.innerHTML = `
+    <div class="stat"><b>${totalAssignments}</b>ביצועים החודש</div>
+    <div class="stat"><b>${oneDays}</b>ימים עם משימה אחת</div>
+    <div class="stat"><b>${zeroDays}</b>ימי מנוחה</div>
+    <div class="stat ${busyDays>0?'warn':''}"><b>${busyDays}</b>ימים עמוסים (2+)</div>
+  `;
+  const existingHint = statsRow.parentElement.querySelector('.hint.overload-hint');
+  if(existingHint) existingHint.remove();
+  if(busyDays>0){
+    const note = document.createElement('div');
+    note.className = 'hint overload-hint';
+    note.textContent = 'יש ימים עם יותר ממשימה אחת כי סך התדירויות שהוגדרו גדול ממספר הימים בחודש. כדי לפזר עוד יותר — הגדילו את "כל כמה ימים" לשגרות פחות דחופות.';
+    statsRow.after(note);
+  }
+
+  const firstDow = new Date(viewYear, viewMonth, 1).getDay();
+  const table = document.createElement('table');
+  table.className = 'cal';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr>' + HEB_DAYS.map(d=>`<th>${d}</th>`).join('') + '</tr>';
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  let row = document.createElement('tr');
+  for(let i=0;i<firstDow;i++){
+    const td = document.createElement('td');
+    td.className = 'empty';
+    row.appendChild(td);
+  }
+  const todayStr = todayISO();
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = dateISO(viewYear, viewMonth, d);
+    const td = document.createElement('td');
+    if(iso === todayStr) td.classList.add('today');
+    const dn = document.createElement('div');
+    dn.className = 'daynum';
+    dn.textContent = d;
+    td.appendChild(dn);
+
+    dayMap[d].forEach(routine=>{
+      const key = iso + '_' + routine.id;
+      const done = !!completionsForViewedMonth[key];
+      const chip = document.createElement('label');
+      chip.className = 'chip' + (done?' done':'');
+      chip.innerHTML = `<input type="checkbox" ${done?'checked':''}><span class="dot" style="background:${routine.color}"></span><span class="chip-label">${escapeHtml(routine.name)}</span>`;
+      chip.querySelector('input').addEventListener('change', ()=>{
+        toggleCompletion(iso, routine.id);
+      });
+      td.appendChild(chip);
+    });
+
+    row.appendChild(td);
+    if((firstDow + d) % 7 === 0){ tbody.appendChild(row); row = document.createElement('tr'); }
+  }
+  if(row.children.length>0){
+    while(row.children.length<7){ const td = document.createElement('td'); td.className='empty'; row.appendChild(td); }
+    tbody.appendChild(row);
+  }
+  table.appendChild(tbody);
+
+  const holder = document.getElementById('calHolder');
+  holder.innerHTML = '<div class="cal-scroll"></div>';
+  holder.firstChild.appendChild(table);
+}
+
+function renderAll(){
+  renderOfflineBanner();
+  renderTodayCard();
+  renderRoutineList();
+  renderCalendar();
+}
+
+// ---------- Events ----------
+document.querySelectorAll('.preset-btn[data-v]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ document.getElementById('newInterval').value = btn.dataset.v; });
+});
+
+document.getElementById('addBtn').addEventListener('click', async ()=>{
+  const nameInput = document.getElementById('newName');
+  const intervalInput = document.getElementById('newInterval');
+  const errorEl = document.getElementById('addError');
+  const name = nameInput.value.trim();
+  const interval = parseInt(intervalInput.value,10);
+  errorEl.textContent = '';
+  if(!name){ errorEl.textContent = 'נא להזין שם שגרה'; nameInput.focus(); return; }
+  if(!interval || interval<1){ errorEl.textContent = 'נא להזין תדירות תקינה (מספר ימים)'; intervalInput.focus(); return; }
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  await addRoutine(name, interval);
+  btn.disabled = false;
+  nameInput.value = '';
+  intervalInput.value = '7';
+  nameInput.focus();
+});
+
+document.getElementById('newName').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('addBtn').click();
+});
+
+function goToMonth(y, m){
+  viewYear = y; viewMonth = m;
+  if(dbMode==='live') subscribeCompletions(viewYear, viewMonth);
+  renderCalendar();
+  renderTodayCard();
+}
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  let m = viewMonth-1, y = viewYear; if(m<0){m=11; y--;}
+  goToMonth(y, m);
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  let m = viewMonth+1, y = viewYear; if(m>11){m=0; y++;}
+  goToMonth(y, m);
+});
+document.getElementById('todayBtn').addEventListener('click', ()=>{
+  const t = new Date();
+  goToMonth(t.getFullYear(), t.getMonth());
+});
+
+renderAll();
+initBackend();
+</script>
+</body>
+</html>
