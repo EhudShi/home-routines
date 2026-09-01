@@ -117,23 +117,30 @@
   .today-card .today-date{font-size:var(--fs-lg);color:var(--hero-ink);margin:0 0 var(--sp-4);font-weight:700;text-wrap:balance;}
   .today-list{display:flex;flex-direction:column;gap:var(--sp-2);}
   .today-item{
-    display:flex;align-items:center;gap:var(--sp-3);
+    display:flex;align-items:center;gap:var(--sp-1);
     background:var(--hero-item-bg);
     border-radius:var(--radius-md);
-    padding:var(--sp-3) var(--sp-4);
-    cursor:pointer;
+    padding-inline-end:var(--sp-2);
     transition:background .18s var(--ease-out);
   }
   .today-item:hover{background:var(--hero-item-bg-hover);}
+  .today-item-main{display:flex;align-items:center;gap:var(--sp-3);flex:1;min-width:0;padding:var(--sp-3) var(--sp-4);cursor:pointer;}
   .today-item input{width:18px;height:18px;accent-color:var(--hero-bg-1);flex-shrink:0;cursor:pointer;}
   .today-item span.name{font-size:var(--fs-base);font-weight:500;color:var(--hero-ink);}
-  .today-item.done span.name{opacity:.6;text-decoration:line-through;}
+  .today-item.done .today-item-main span.name{opacity:.6;text-decoration:line-through;}
   .today-empty{font-size:var(--fs-base);color:var(--hero-ink-sub);padding:var(--sp-2) 0;}
+  .occ-swap-btn{
+    background:none;border:none;color:var(--hero-ink);opacity:.8;
+    font-size:1rem;padding:var(--sp-2);border-radius:var(--radius-sm);cursor:pointer;flex-shrink:0;
+    transition:background .15s var(--ease-out), opacity .15s var(--ease-out);
+  }
+  .occ-swap-btn:hover{opacity:1;background:var(--hero-item-bg-hover);}
+  .today-actions{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3);}
   .remind-btn{
     display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
-    width:100%;margin-top:var(--sp-3);
+    width:100%;
     background:transparent;border:1px solid var(--hero-item-bg-hover);color:var(--hero-ink);
-    border-radius:var(--radius-md);padding:var(--sp-2) var(--sp-4);font-size:var(--fs-sm);font-weight:600;
+    border-radius:var(--radius-md);padding:var(--sp-2) var(--sp-3);font-size:var(--fs-sm);font-weight:600;
     cursor:pointer;transition:background .15s var(--ease-out);
   }
   .remind-btn:hover{background:var(--hero-item-bg);}
@@ -292,12 +299,51 @@
   .week-day.is-today .week-day-name{color:var(--accent);}
   .week-day-date{font-size:var(--fs-xs);color:var(--sub);}
   .week-items{display:flex;flex-direction:column;gap:var(--sp-1);}
-  .week-item{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) 0;cursor:pointer;}
+  .week-item{display:flex;align-items:center;gap:var(--sp-1);}
+  .week-item-main{display:flex;align-items:center;gap:var(--sp-2);flex:1;min-width:0;padding:var(--sp-1) 0;cursor:pointer;}
   .week-item input{width:17px;height:17px;accent-color:var(--accent);flex-shrink:0;cursor:pointer;}
   .week-item .dot{width:9px;height:9px;flex-shrink:0;}
   .week-item span.wname{font-size:var(--fs-sm);}
-  .week-item.done span.wname{opacity:.5;text-decoration:line-through;}
+  .week-item.done .week-item-main span.wname{opacity:.5;text-decoration:line-through;}
   .week-day-empty{font-size:var(--fs-xs);color:var(--sub);}
+  .occ-swap-btn-sm{
+    background:none;border:none;color:var(--sub);font-size:.95rem;
+    padding:5px 7px;cursor:pointer;border-radius:var(--radius-sm);flex-shrink:0;
+    transition:background .15s var(--ease-out), color .15s var(--ease-out);
+  }
+  .occ-swap-btn-sm:hover{background:var(--card-alt);color:var(--accent);}
+
+  .occ-menu{
+    position:absolute;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-md);
+    box-shadow:var(--shadow-md);z-index:60;overflow:hidden;min-width:190px;
+  }
+  .occ-menu button{
+    display:block;width:100%;text-align:right;padding:var(--sp-3) var(--sp-4);
+    background:none;border:none;font-size:var(--fs-sm);cursor:pointer;font-family:inherit;color:var(--ink);
+  }
+  .occ-menu button:hover{background:var(--card-alt);}
+
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(20,24,16,.45);display:none;
+    align-items:center;justify-content:center;z-index:70;padding:var(--sp-4);
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal-panel{
+    background:var(--card);border-radius:var(--radius-lg);padding:var(--sp-5);
+    max-width:420px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-md);
+  }
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-4);}
+  .modal-header h3{margin:0;font-size:var(--fs-md);}
+  .swap-list{display:flex;flex-direction:column;gap:var(--sp-2);}
+  .swap-candidate{
+    display:flex;align-items:center;gap:var(--sp-2);width:100%;text-align:right;
+    padding:var(--sp-3) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-md);
+    background:var(--card);cursor:pointer;font-family:inherit;font-size:var(--fs-sm);
+    transition:border-color .15s var(--ease-out), background .15s var(--ease-out);
+  }
+  .swap-candidate:hover{border-color:var(--accent);background:var(--card-alt);}
+  .swap-candidate-name{flex:1;min-width:0;}
+  .swap-candidate-date{color:var(--sub);font-size:var(--fs-xs);white-space:nowrap;}
 
   .empty-state{color:var(--sub);font-size:var(--fs-sm);text-align:center;padding:var(--sp-6) var(--sp-4);}
   .empty-state .big{font-size:2rem;margin-bottom:var(--sp-2);}
@@ -388,6 +434,16 @@
   <p class="footer-note" id="footerNote">מתחבר…</p>
 </div>
 
+<div class="modal-backdrop" id="swapModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3>🔄 החלפת שגרה</h3>
+      <button class="icon-btn" id="swapCloseBtn">✕</button>
+    </div>
+    <div id="swapList" class="swap-list"></div>
+  </div>
+</div>
+
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
@@ -429,6 +485,9 @@ let routinesLoaded = false;
 let localCompletions = {}; // flat map, used only when dbMode !== 'live'
 let completionsCache = {}; // monthKey -> {data}, used when dbMode === 'live'
 let completionsUnsubs = {}; // monthKey -> unsubscribe fn
+let localOverrides = {}; // flat map, used only when dbMode !== 'live'
+let overridesCache = {}; // monthKey (of the NATURAL date) -> {data}, used when dbMode === 'live'
+let overridesUnsubs = {};
 let unsubRoutines = null;
 let viewMode = 'month'; // 'month' | 'week'
 let viewYear, viewMonth; // for month view
@@ -461,7 +520,7 @@ function loadLocal(){
 }
 function saveLocal(){
   try{
-    localStorage.setItem(LOCAL_KEY, JSON.stringify({ routines, completions: localCompletions }));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify({ routines, completions: localCompletions, overrides: localOverrides }));
   }catch(e){}
 }
 
@@ -473,9 +532,86 @@ function isDone(dateISOStr, routineId){
   return !!(data && data[key]);
 }
 
-function getRoutinesForDate(dateObj){
-  const { dayMap } = buildMonthSchedule(dateObj.getFullYear(), dateObj.getMonth());
-  return dayMap[dateObj.getDate()] || [];
+// ---------- Overrides (defer to another day / swap two occurrences) ----------
+// An override says: "the occurrence of <routineId> whose ALGORITHM-computed date is
+// <naturalDateISO> is actually happening on <newDateISO> instead." Keying by the natural
+// date (rather than wherever it's currently displayed) means a second defer/swap on the
+// same occurrence simply overwrites the first, with no need to chase a chain of moves.
+function overrideKey(naturalDateISO, routineId){ return naturalDateISO + '_' + routineId; }
+
+function getOverridesFlat(){
+  if(dbMode !== 'live') return localOverrides;
+  return Object.assign({}, ...Object.values(overridesCache));
+}
+
+function effectiveDateFor(naturalDateISO, routineId){
+  const flat = getOverridesFlat();
+  return flat[overrideKey(naturalDateISO, routineId)] || naturalDateISO;
+}
+
+async function setOverride(naturalDateISO, routineId, newDateISO){
+  const key = overrideKey(naturalDateISO, routineId);
+  if(dbMode !== 'live'){
+    localOverrides[key] = newDateISO;
+    saveLocal();
+    renderActiveView();
+    return;
+  }
+  try{
+    const mk = naturalDateISO.slice(0,7);
+    const ref = db.doc('overrides/' + mk);
+    const snap = await ref.get();
+    const data = snap.exists ? { ...snap.data() } : {};
+    data[key] = newDateISO;
+    await ref.set(data);
+  }catch(e){ showError('לא ניתן היה לשמור את השינוי: ' + (e && e.message ? e.message : e)); }
+}
+
+// Natural month + a margin on each side, so a defer/swap near a month boundary is still found.
+function monthsSpan(startISO, endISO, marginMonths){
+  const s = parseISO(startISO); s.setDate(1); s.setMonth(s.getMonth()-marginMonths);
+  const e = parseISO(endISO); e.setDate(1); e.setMonth(e.getMonth()+marginMonths);
+  const months = [];
+  let cur = new Date(s);
+  while(cur <= e){ months.push({y:cur.getFullYear(), m:cur.getMonth()}); cur.setMonth(cur.getMonth()+1); }
+  return months;
+}
+
+function naturalOccurrencesForMonths(monthList){
+  const list = [];
+  monthList.forEach(({y,m})=>{
+    const { dayMap, daysInMonth } = buildMonthSchedule(y,m);
+    for(let d=1; d<=daysInMonth; d++){
+      dayMap[d].forEach(routine=>{ list.push({ routine, naturalDate: dateISO(y,m,d) }); });
+    }
+  });
+  return list;
+}
+
+// The actual, override-aware set of {routine, date, naturalDate} occurrences whose
+// EFFECTIVE date falls in [startISO, endISO]. naturalDate is carried along so a later
+// defer/swap on this occurrence knows which override key to write.
+function effectiveOccurrencesInRange(startISO, endISO){
+  const months = monthsSpan(startISO, endISO, 1);
+  const natural = naturalOccurrencesForMonths(months);
+  const result = [];
+  natural.forEach(occ=>{
+    const eff = effectiveDateFor(occ.naturalDate, occ.routine.id);
+    if(eff >= startISO && eff <= endISO){
+      result.push({ routine: occ.routine, date: eff, naturalDate: occ.naturalDate });
+    }
+  });
+  result.sort((a,b)=> a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  return result;
+}
+function effectiveOccurrencesGroupedByDate(startISO, endISO){
+  const grouped = {};
+  effectiveOccurrencesInRange(startISO, endISO).forEach(o=>{ (grouped[o.date] = grouped[o.date] || []).push(o); });
+  return grouped;
+}
+function getOccurrencesForDate(dateObj){
+  const iso = dateISO(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+  return effectiveOccurrencesInRange(iso, iso);
 }
 
 // ---------- Scheduling (pure) ----------
@@ -555,6 +691,7 @@ async function initBackend(){
     await maybeSeedDefaults();
     subscribeRoutines();
     syncCompletionSubscriptions(neededMonthKeys());
+    syncOverrideSubscriptions(neededOverrideMonthKeys());
   }catch(e){
     showError('לא ניתן היה להתחבר למסד הנתונים, עובד במצב מקומי: ' + (e && e.message ? e.message : e));
     dbMode = 'local';
@@ -567,6 +704,7 @@ function initLocalMode(){
   if(saved && Array.isArray(saved.routines) && saved.routines.length){
     routines = saved.routines;
     localCompletions = saved.completions || {};
+    localOverrides = saved.overrides || {};
   } else {
     routines = DEFAULT_ROUTINES.map((r,i)=>({
       id: 'local'+i, name: r.name, intervalDays: r.interval, startDate: todayISO(),
@@ -618,20 +756,41 @@ function neededMonthKeys(){
   return [...keys];
 }
 
-function syncCompletionSubscriptions(neededKeys){
+// Overrides are keyed by NATURAL month, and a defer/swap can reach a neighboring month,
+// so gather one month of margin around whatever neededMonthKeys() would need.
+function neededOverrideMonthKeys(){
+  const base = neededMonthKeys();
+  const keys = new Set();
+  base.forEach(k=>{
+    const [y,m] = k.split('-').map(Number);
+    [-1,0,1].forEach(off=>{
+      const d = new Date(y, (m-1)+off, 1);
+      keys.add(monthKey(d.getFullYear(), d.getMonth()));
+    });
+  });
+  return [...keys];
+}
+
+function syncMonthlySubscriptions(collectionName, neededKeys, cache, unsubs, onError){
   if(dbMode !== 'live') return;
   const neededSet = new Set(neededKeys);
-  Object.keys(completionsUnsubs).forEach(k=>{
-    if(!neededSet.has(k)){ completionsUnsubs[k](); delete completionsUnsubs[k]; delete completionsCache[k]; }
+  Object.keys(unsubs).forEach(k=>{
+    if(!neededSet.has(k)){ unsubs[k](); delete unsubs[k]; delete cache[k]; }
   });
   neededKeys.forEach(k=>{
-    if(completionsUnsubs[k]) return;
-    const ref = db.doc('completions/' + k);
-    completionsUnsubs[k] = ref.onSnapshot(
-      snap=>{ completionsCache[k] = snap.exists ? (snap.data() || {}) : {}; renderActiveView(); },
-      err=>{ showError('שגיאה בטעינת סימוני ביצוע: ' + err.message); }
+    if(unsubs[k]) return;
+    const ref = db.doc(collectionName + '/' + k);
+    unsubs[k] = ref.onSnapshot(
+      snap=>{ cache[k] = snap.exists ? (snap.data() || {}) : {}; renderActiveView(); },
+      err=>{ showError(onError + err.message); }
     );
   });
+}
+function syncCompletionSubscriptions(neededKeys){
+  syncMonthlySubscriptions('completions', neededKeys, completionsCache, completionsUnsubs, 'שגיאה בטעינת סימוני ביצוע: ');
+}
+function syncOverrideSubscriptions(neededKeys){
+  syncMonthlySubscriptions('overrides', neededKeys, overridesCache, overridesUnsubs, 'שגיאה בטעינת שינויים: ');
 }
 
 async function toggleCompletion(dateISOStr, routineId){
@@ -722,52 +881,80 @@ function renderTodayCard(){
     return;
   }
   const now = new Date();
-  const todaysRoutines = getRoutinesForDate(now);
+  const todaysOccs = getOccurrencesForDate(now);
   const iso = todayISO();
 
   const dateLabel = now.toLocaleDateString('he-IL', { weekday:'long', day:'numeric', month:'long' });
 
   let itemsHtml;
-  const pending = todaysRoutines.filter(r => !isDone(iso, r.id));
-  if(todaysRoutines.length === 0){
+  const pending = todaysOccs.filter(o => !isDone(o.date, o.routine.id));
+  if(todaysOccs.length === 0){
     itemsHtml = `<div class="today-empty">אין משימות מתוכננות להיום 🎉</div>`;
   } else {
-    itemsHtml = '<div class="today-list">' + todaysRoutines.map(r=>{
-      const key = iso + '_' + r.id;
-      const done = isDone(iso, r.id);
-      return `<label class="today-item ${done?'done':''}" data-key="${escapeHtml(key)}">
-        <input type="checkbox" ${done?'checked':''} data-date="${iso}" data-rid="${escapeHtml(r.id)}">
-        <span class="name">${escapeHtml(r.name)}</span>
-      </label>`;
+    itemsHtml = '<div class="today-list">' + todaysOccs.map(o=>{
+      const done = isDone(o.date, o.routine.id);
+      return `<div class="today-item ${done?'done':''}">
+        <label class="today-item-main">
+          <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
+          <span class="name">${escapeHtml(o.routine.name)}</span>
+        </label>
+        <button class="occ-swap-btn" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}">🔄</button>
+      </div>`;
     }).join('') + '</div>';
   }
 
   const remindDisabled = pending.length === 0;
+  const dismissDisabled = pending.length === 0;
   holder.innerHTML = `
     <div class="today-card">
       <p class="today-label">היום</p>
       <p class="today-date">${dateLabel}</p>
       ${itemsHtml}
-      <button class="remind-btn" id="remindBtn" ${remindDisabled?'disabled':''}>⏰ הוסף תזכורת למאוחר יותר</button>
+      <div class="today-actions">
+        <button class="remind-btn" id="dismissAllBtn" ${dismissDisabled?'disabled':''}>😴 דחה הכל למחר</button>
+        <button class="remind-btn" id="remindBtn" ${remindDisabled?'disabled':''}>⏰ הוסף תזכורת למאוחר יותר</button>
+      </div>
       <p class="remind-note" id="remindNote"></p>
     </div>`;
 
-  holder.querySelectorAll('.today-item input').forEach(cb=>{
+  holder.querySelectorAll('.today-item-main input').forEach(cb=>{
     cb.addEventListener('change', (e)=>{
       toggleCompletion(e.target.dataset.date, e.target.dataset.rid);
+    });
+  });
+  holder.querySelectorAll('.occ-swap-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid });
     });
   });
 
   const remindBtn = document.getElementById('remindBtn');
   if(remindBtn && !remindDisabled){
-    remindBtn.addEventListener('click', ()=> addReminderForPending(pending));
+    remindBtn.addEventListener('click', ()=> addReminderForPending(pending.map(o=>o.routine)));
+  }
+  const dismissBtn = document.getElementById('dismissAllBtn');
+  if(dismissBtn && !dismissDisabled){
+    dismissBtn.addEventListener('click', ()=> dismissAllToday(pending));
   }
 }
 
-function addReminderForPending(pending){
-  const title = pending.length === 1
-    ? pending[0].name
-    : 'שגרות הבית: ' + pending.map(r=>r.name).join(', ');
+async function dismissAllToday(pendingAtRenderTime){
+  const t = new Date(); t.setDate(t.getDate()+1);
+  const tomorrowISOStr = dateISO(t.getFullYear(), t.getMonth(), t.getDate());
+  for(const occ of pendingAtRenderTime){
+    // re-check now, not just at render time: a checkbox toggled a moment ago might not
+    // have been reflected in the "pending" list this button was built from.
+    if(isDone(occ.date, occ.routine.id)) continue;
+    await setOverride(occ.naturalDate, occ.routine.id, tomorrowISOStr);
+  }
+  const note = document.getElementById('remindNote');
+  if(note) note.textContent = 'המשימות שלא סומנו כבוצעו נדחו למחר.';
+}
+
+function addReminderForPending(pendingRoutines){
+  const title = pendingRoutines.length === 1
+    ? pendingRoutines[0].name
+    : 'שגרות הבית: ' + pendingRoutines.map(r=>r.name).join(', ');
   const note = document.getElementById('remindNote');
   try{
     if(navigator.clipboard) navigator.clipboard.writeText(title).catch(()=>{});
@@ -775,6 +962,93 @@ function addReminderForPending(pending){
   const url = 'x-apple-reminderkit://remcdreminder/create?title=' + encodeURIComponent(title);
   window.location.href = url;
   if(note) note.textContent = 'אם אפליקציית התזכורות לא נפתחה: הטקסט "' + title + '" הועתק, אפשר להדביק ידנית.';
+}
+
+// ---------- Swap picker (shared by today / week / month views) ----------
+let swapContext = null;
+
+function openSwapPicker(ctx){
+  swapContext = ctx;
+  const end = parseISO(ctx.date); end.setDate(end.getDate()+6);
+  const endISOStr = dateISO(end.getFullYear(), end.getMonth(), end.getDate());
+
+  const candidates = effectiveOccurrencesInRange(ctx.date, endISOStr).filter(o=>
+    !(o.naturalDate === ctx.naturalDate && o.routine.id === ctx.routineId) &&
+    o.routine.id !== ctx.routineId &&
+    !isDone(o.date, o.routine.id)
+  );
+
+  const list = document.getElementById('swapList');
+  if(candidates.length === 0){
+    list.innerHTML = `<div class="empty-state">אין שגרות אחרות השבוע הקרוב להחלפה.</div>`;
+  } else {
+    list.innerHTML = candidates.map(o=>{
+      const d = parseISO(o.date);
+      const label = `${HEB_WEEKDAY_FULL[d.getDay()]}, ${d.getDate()} ב${HEB_MONTHS[d.getMonth()]}`;
+      return `<button class="swap-candidate" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}">
+        <span class="dot" style="background:${o.routine.color}"></span>
+        <span class="swap-candidate-name">${escapeHtml(o.routine.name)}</span>
+        <span class="swap-candidate-date">${label}</span>
+      </button>`;
+    }).join('');
+    list.querySelectorAll('.swap-candidate').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        performSwap(swapContext, { date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid });
+        closeSwapPicker();
+      });
+    });
+  }
+  document.getElementById('swapModal').classList.add('open');
+}
+
+function closeSwapPicker(){
+  document.getElementById('swapModal').classList.remove('open');
+  swapContext = null;
+}
+
+async function performSwap(a, b){
+  await setOverride(a.naturalDate, a.routineId, b.date);
+  await setOverride(b.naturalDate, b.routineId, a.date);
+}
+
+// ---------- Occurrence menu (month view: no room for a swap icon next to every chip) ----------
+let openMenuEl = null;
+
+function openOccurrenceMenu(occ, anchorEl){
+  closeOccurrenceMenu();
+  const done = isDone(occ.date, occ.routine.id);
+  const menu = document.createElement('div');
+  menu.className = 'occ-menu';
+  menu.innerHTML = `
+    <button data-action="toggle">${done ? '↩ בטל סימון ביצוע' : '✓ סמן כבוצע'}</button>
+    <button data-action="swap">🔄 החלף עם שגרה אחרת</button>
+  `;
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  const left = Math.max(8, Math.min(rect.left + window.scrollX, window.innerWidth - 200));
+  menu.style.left = left + 'px';
+  menu.style.top = (window.scrollY + rect.bottom + 4) + 'px';
+
+  menu.querySelector('[data-action="toggle"]').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    toggleCompletion(occ.date, occ.routine.id);
+    closeOccurrenceMenu();
+  });
+  menu.querySelector('[data-action="swap"]').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    closeOccurrenceMenu();
+    openSwapPicker({ date: occ.date, naturalDate: occ.naturalDate, routineId: occ.routine.id });
+  });
+
+  openMenuEl = menu;
+  setTimeout(()=> document.addEventListener('click', onDocClickCloseMenu), 0);
+}
+function closeOccurrenceMenu(){
+  if(openMenuEl){ openMenuEl.remove(); openMenuEl = null; }
+  document.removeEventListener('click', onDocClickCloseMenu);
+}
+function onDocClickCloseMenu(e){
+  if(openMenuEl && !openMenuEl.contains(e.target)) closeOccurrenceMenu();
 }
 
 let editingRoutineId = null;
@@ -868,11 +1142,15 @@ function renderCalendar(){
     return;
   }
 
-  const { dayMap, daysInMonth, totalAssignments } = buildMonthSchedule(viewYear, viewMonth);
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+  const monthStartISO = dateISO(viewYear, viewMonth, 1);
+  const monthEndISO = dateISO(viewYear, viewMonth, daysInMonth);
+  const grouped = effectiveOccurrencesGroupedByDate(monthStartISO, monthEndISO);
+  const totalAssignments = Object.values(grouped).reduce((n,arr)=>n+arr.length, 0);
 
   let zeroDays=0, oneDays=0, busyDays=0;
   for(let d=1; d<=daysInMonth; d++){
-    const n = dayMap[d].length;
+    const n = (grouped[dateISO(viewYear, viewMonth, d)] || []).length;
     if(n===0) zeroDays++; else if(n===1) oneDays++; else busyDays++;
   }
   const statsRow = document.getElementById('statsRow');
@@ -915,12 +1193,12 @@ function renderCalendar(){
     dn.textContent = d;
     td.appendChild(dn);
 
-    dayMap[d].forEach(routine=>{
-      const done = isDone(iso, routine.id);
+    (grouped[iso] || []).forEach(occ=>{
+      const done = isDone(occ.date, occ.routine.id);
       const chip = document.createElement('div');
       chip.className = 'chip' + (done?' done':'');
-      chip.innerHTML = `<span class="dot" style="background:${routine.color}"></span><span class="chip-label">${escapeHtml(routine.name)}</span>`;
-      chip.addEventListener('click', ()=>{ toggleCompletion(iso, routine.id); });
+      chip.innerHTML = `<span class="dot" style="background:${occ.routine.color}"></span><span class="chip-label">${escapeHtml(occ.routine.name)}</span>`;
+      chip.addEventListener('click', (e)=>{ e.stopPropagation(); openOccurrenceMenu(occ, chip); });
       td.appendChild(chip);
     });
 
@@ -958,21 +1236,27 @@ function renderWeek(){
   }
 
   const todayStr = todayISO();
+  const weekStartISO = dateISO(first.getFullYear(), first.getMonth(), first.getDate());
+  const weekEndISO = dateISO(last.getFullYear(), last.getMonth(), last.getDate());
+  const grouped = effectiveOccurrencesGroupedByDate(weekStartISO, weekEndISO);
   let total = 0;
   const sections = days.map(d=>{
     const iso = dateISO(d.getFullYear(), d.getMonth(), d.getDate());
-    const items = getRoutinesForDate(d);
-    total += items.length;
+    const occs = grouped[iso] || [];
+    total += occs.length;
     const isToday = iso === todayStr;
-    const itemsHtml = items.length === 0
+    const itemsHtml = occs.length === 0
       ? `<div class="week-day-empty">אין משימות</div>`
-      : items.map(r=>{
-          const done = isDone(iso, r.id);
-          return `<label class="week-item ${done?'done':''}" data-date="${iso}" data-rid="${escapeHtml(r.id)}">
-            <input type="checkbox" ${done?'checked':''}>
-            <span class="dot" style="background:${r.color}"></span>
-            <span class="wname">${escapeHtml(r.name)}</span>
-          </label>`;
+      : occs.map(o=>{
+          const done = isDone(o.date, o.routine.id);
+          return `<div class="week-item ${done?'done':''}">
+            <label class="week-item-main">
+              <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
+              <span class="dot" style="background:${o.routine.color}"></span>
+              <span class="wname">${escapeHtml(o.routine.name)}</span>
+            </label>
+            <button class="occ-swap-btn-sm" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}">🔄</button>
+          </div>`;
         }).join('');
     return `
       <div class="week-day ${isToday?'is-today':''}">
@@ -987,10 +1271,14 @@ function renderWeek(){
   document.getElementById('statsRow').innerHTML = `<div class="stat"><b>${total}</b>ביצועים השבוע</div>`;
   const holder = document.getElementById('calHolder');
   holder.innerHTML = `<div class="week-list">${sections}</div>`;
-  holder.querySelectorAll('.week-item input').forEach(cb=>{
+  holder.querySelectorAll('.week-item-main input').forEach(cb=>{
     cb.addEventListener('change', (e)=>{
-      const row = e.target.closest('.week-item');
-      toggleCompletion(row.dataset.date, row.dataset.rid);
+      toggleCompletion(e.target.dataset.date, e.target.dataset.rid);
+    });
+  });
+  holder.querySelectorAll('.occ-swap-btn-sm').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid });
     });
   });
 }
@@ -1036,12 +1324,12 @@ document.getElementById('newName').addEventListener('keydown', (e)=>{
 
 function goToMonth(y, m){
   viewYear = y; viewMonth = m;
-  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  if(dbMode==='live'){ syncCompletionSubscriptions(neededMonthKeys()); syncOverrideSubscriptions(neededOverrideMonthKeys()); }
   renderActiveView();
 }
 function goToWeek(newStart){
   weekStart = newStart;
-  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  if(dbMode==='live'){ syncCompletionSubscriptions(neededMonthKeys()); syncOverrideSubscriptions(neededOverrideMonthKeys()); }
   renderActiveView();
 }
 function setViewMode(mode){
@@ -1049,7 +1337,7 @@ function setViewMode(mode){
   viewMode = mode;
   document.getElementById('viewMonthBtn').classList.toggle('active', mode==='month');
   document.getElementById('viewWeekBtn').classList.toggle('active', mode==='week');
-  if(dbMode==='live') syncCompletionSubscriptions(neededMonthKeys());
+  if(dbMode==='live'){ syncCompletionSubscriptions(neededMonthKeys()); syncOverrideSubscriptions(neededOverrideMonthKeys()); }
   renderActiveView();
 }
 document.getElementById('viewMonthBtn').addEventListener('click', ()=> setViewMode('month'));
@@ -1075,6 +1363,11 @@ document.getElementById('todayBtn').addEventListener('click', ()=>{
   const t = new Date();
   if(viewMode === 'week') goToWeek(startOfWeek(t));
   else goToMonth(t.getFullYear(), t.getMonth());
+});
+
+document.getElementById('swapCloseBtn').addEventListener('click', closeSwapPicker);
+document.getElementById('swapModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'swapModal') closeSwapPicker();
 });
 
 renderAll();
