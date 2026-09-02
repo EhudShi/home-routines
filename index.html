@@ -105,6 +105,18 @@
     padding:var(--sp-5);
   }
   .card h2{font-size:var(--fs-md);margin:0 0 var(--sp-4);display:flex;align-items:center;gap:var(--sp-2);font-weight:600;}
+  .section-toggle{
+    display:flex;align-items:center;justify-content:space-between;width:100%;
+    background:none;border:none;cursor:pointer;padding:0;font-family:inherit;color:inherit;text-align:inherit;
+  }
+  .section-toggle h2{margin:0;}
+  .section-toggle .chevron{
+    color:var(--sub);font-size:1.1rem;transition:transform .2s var(--ease-out);flex-shrink:0;
+    transform:rotate(-90deg);
+  }
+  .section-toggle[aria-expanded="true"] .chevron{transform:rotate(0deg);}
+  .section-body{overflow:hidden;max-height:2000px;transition:max-height .25s var(--ease-out), margin-top .25s var(--ease-out);margin-top:var(--sp-4);}
+  .section-body.collapsed{max-height:0;margin-top:0;}
 
   .today-card{
     background:linear-gradient(160deg, var(--hero-bg-1) 0%, var(--hero-bg-2) 100%);
@@ -403,9 +415,14 @@
       </div>
 
       <div class="card">
-        <h2>📋 השגרות שלי (<span id="routineCount">0</span>)</h2>
-        <div id="routineList"></div>
-        <div class="hint">לחיצה על ✎ מאפשרת לערוך שם/תדירות. שינוי תדירות משפיע על הלו"ז מהחודש הנוכחי והלאה.</div>
+        <button class="section-toggle" id="routineListToggle" aria-expanded="false">
+          <h2>📋 השגרות שלי (<span id="routineCount">0</span>)</h2>
+          <span class="chevron">›</span>
+        </button>
+        <div id="routineListBody" class="section-body collapsed">
+          <div id="routineList"></div>
+          <div class="hint">לחיצה על ✎ מאפשרת לערוך שם/תדירות. שינוי תדירות משפיע על הלו"ז מהחודש הנוכחי והלאה.</div>
+        </div>
       </div>
     </div>
 
@@ -1369,6 +1386,22 @@ document.getElementById('swapCloseBtn').addEventListener('click', closeSwapPicke
 document.getElementById('swapModal').addEventListener('click', (e)=>{
   if(e.target.id === 'swapModal') closeSwapPicker();
 });
+
+{
+  const toggleBtn = document.getElementById('routineListToggle');
+  const body = document.getElementById('routineListBody');
+  const setExpanded = (expanded)=>{
+    toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    body.classList.toggle('collapsed', !expanded);
+    try{ localStorage.setItem('routineListExpanded', expanded ? '1' : '0'); }catch(e){}
+  };
+  let startExpanded = false;
+  try{ startExpanded = localStorage.getItem('routineListExpanded') === '1'; }catch(e){}
+  setExpanded(startExpanded);
+  toggleBtn.addEventListener('click', ()=>{
+    setExpanded(toggleBtn.getAttribute('aria-expanded') !== 'true');
+  });
+}
 
 renderAll();
 initBackend();
