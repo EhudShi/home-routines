@@ -475,7 +475,7 @@
       <h3>⏮ פספסתי משימות</h3>
       <button class="icon-btn" id="catchupCloseBtn">✕</button>
     </div>
-    <p class="hint">בחרו מאיזה תאריך פספסתם. כל משימה מתוכננת מהתאריך הזה ועד אתמול שלא סומנה כבוצעה תזוז קדימה באותו מספר הימים בדיוק — כך שמה שהיה מתוכנן לתאריך שבחרתם יהיה היום, מה שהיה מתוכנן ליום שאחריו יהיה מחר, וכן הלאה. המרווחים בין השגרות נשמרים. משימות שכבר מתוכננות להיום ואילך, וכאלה שבוצעו במועדן, לא ייפגעו.</p>
+    <p class="hint">בחרו מאיזה תאריך פספסתם. כל שגרה עם משימה מתוכננת מהתאריך הזה ועד אתמול שלא סומנה כבוצעה — כל הלו"ז העתידי שלה (לא רק המשימה שפוספסה) יתחיל להיספר מחדש מהיום, ויתפזר אוטומטית בדיוק כמו תמיד כדי שלא ייערם עומס על יום אחד. שגרות שבוצעו במועדן, ומשימות שכבר מתוכננות כהלכה, לא ייפגעו.</p>
     <div class="field">
       <label>מתאריך</label>
       <input type="date" id="catchupDateInput">
@@ -1431,27 +1431,26 @@ async function performCatchup(){
   if(!fromISO){ errorEl.textContent = 'נא לבחור תאריך'; return; }
   if(fromISO >= todayStr){ errorEl.textContent = 'יש לבחור תאריך שכבר עבר'; return; }
 
-  // A literal date-shift, not a per-routine restart: every missed occurrence moves forward
-  // by the SAME number of days (today minus the chosen date), so relative spacing between
-  // routines is preserved — whatever was on the chosen date lands on today, the day after
-  // lands on tomorrow, etc. Occurrences already due today or later are untouched.
-  const offsetDays = Math.round((parseISO(todayStr) - parseISO(fromISO)) / 86400000);
+  // Re-anchor each affected routine's whole future schedule to today, rather than
+  // translating just the missed dates. A raw date-shift (old approach) bypasses the
+  // spreading algorithm entirely, so shifted items can land right on top of whatever
+  // was already placed nearby. Resetting startDate instead makes buildMonthSchedule
+  // recompute EVERY routine's placement together through its normal cap/collision
+  // logic, so the catch-up naturally spreads out instead of piling up.
   const y = new Date(); y.setDate(y.getDate()-1);
   const yesterdayISO = dateISO(y.getFullYear(), y.getMonth(), y.getDate());
 
   const missed = effectiveOccurrencesInRange(fromISO, yesterdayISO).filter(o => !isDone(o.date, o.routine.id));
-  if(missed.length === 0){
+  const routineIds = [...new Set(missed.map(o => o.routine.id))];
+  if(routineIds.length === 0){
     errorEl.textContent = 'לא נמצאו שגרות שפוספסו בטווח הזה.';
     return;
   }
 
   const btn = document.getElementById('catchupConfirmBtn');
   btn.disabled = true;
-  for(const occ of missed){
-    const d = parseISO(occ.date);
-    d.setDate(d.getDate() + offsetDays);
-    const newDate = dateISO(d.getFullYear(), d.getMonth(), d.getDate());
-    await setOverride(occ.naturalDate, occ.routine.id, newDate);
+  for(const rid of routineIds){
+    await updateRoutine(rid, { startDate: todayStr });
   }
   btn.disabled = false;
   closeCatchupModal();
