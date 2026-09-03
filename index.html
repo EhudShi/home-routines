@@ -360,6 +360,12 @@
   .empty-state{color:var(--sub);font-size:var(--fs-sm);text-align:center;padding:var(--sp-6) var(--sp-4);}
   .empty-state .big{font-size:2rem;margin-bottom:var(--sp-2);}
   .hint{font-size:var(--fs-xs);color:var(--sub);margin-top:var(--sp-2);line-height:1.5;}
+  .catchup-link{
+    display:block;width:100%;margin-top:var(--sp-4);background:none;border:none;
+    color:var(--sub);font-size:var(--fs-xs);cursor:pointer;text-align:center;padding:var(--sp-2);
+    text-decoration:underline;text-underline-offset:2px;font-family:inherit;
+  }
+  .catchup-link:hover{color:var(--accent);}
   .footer-note{font-size:var(--fs-xs);color:var(--sub-2);margin-top:var(--sp-2);text-align:center;}
 
   .skeleton{background:linear-gradient(90deg, var(--skeleton) 25%, var(--card-alt) 37%, var(--skeleton) 63%);
@@ -444,6 +450,8 @@
         <div class="stats-row" id="statsRow"></div>
 
         <div id="calHolder"></div>
+
+        <button class="catchup-link" id="catchupOpenBtn">⏮ פספסתי משימות מתאריך מסוים</button>
       </div>
     </div>
   </div>
@@ -458,6 +466,22 @@
       <button class="icon-btn" id="swapCloseBtn">✕</button>
     </div>
     <div id="swapList" class="swap-list"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="catchupModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3>⏮ פספסתי משימות</h3>
+      <button class="icon-btn" id="catchupCloseBtn">✕</button>
+    </div>
+    <p class="hint">בחרו מאיזה תאריך פספסתם. כל שגרה עם משימה מתוכננת מהתאריך הזה ועד היום שלא סומנה כבוצעה — תתחיל להיספר מחדש מהיום, כדי שהלו"ז יישאר מפוזר ולא ייערם עומס על יום אחד. שגרות שבוצעו במועדן לא ייפגעו.</p>
+    <div class="field">
+      <label>מתאריך</label>
+      <input type="date" id="catchupDateInput">
+    </div>
+    <div class="field-error" id="catchupError"></div>
+    <button class="primary" id="catchupConfirmBtn">אפס שגרות שפוספסו</button>
   </div>
 </div>
 
@@ -1386,6 +1410,49 @@ document.getElementById('swapCloseBtn').addEventListener('click', closeSwapPicke
 document.getElementById('swapModal').addEventListener('click', (e)=>{
   if(e.target.id === 'swapModal') closeSwapPicker();
 });
+
+// ---------- Catch-up (bulk-reschedule anything missed since a past date) ----------
+function openCatchupModal(){
+  const input = document.getElementById('catchupDateInput');
+  const y = new Date(); y.setDate(y.getDate()-1);
+  input.max = dateISO(y.getFullYear(), y.getMonth(), y.getDate());
+  input.value = '';
+  document.getElementById('catchupError').textContent = '';
+  document.getElementById('catchupModal').classList.add('open');
+}
+function closeCatchupModal(){ document.getElementById('catchupModal').classList.remove('open'); }
+
+async function performCatchup(){
+  const input = document.getElementById('catchupDateInput');
+  const errorEl = document.getElementById('catchupError');
+  const fromISO = input.value;
+  const todayStr = todayISO();
+  errorEl.textContent = '';
+  if(!fromISO){ errorEl.textContent = 'נא לבחור תאריך'; return; }
+  if(fromISO >= todayStr){ errorEl.textContent = 'יש לבחור תאריך שכבר עבר'; return; }
+
+  const missed = effectiveOccurrencesInRange(fromISO, todayStr).filter(o => !isDone(o.date, o.routine.id));
+  const routineIds = [...new Set(missed.map(o => o.routine.id))];
+  if(routineIds.length === 0){
+    errorEl.textContent = 'לא נמצאו שגרות שפוספסו בטווח הזה.';
+    return;
+  }
+
+  const btn = document.getElementById('catchupConfirmBtn');
+  btn.disabled = true;
+  for(const rid of routineIds){
+    await updateRoutine(rid, { startDate: todayStr });
+  }
+  btn.disabled = false;
+  closeCatchupModal();
+}
+
+document.getElementById('catchupOpenBtn').addEventListener('click', openCatchupModal);
+document.getElementById('catchupCloseBtn').addEventListener('click', closeCatchupModal);
+document.getElementById('catchupModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'catchupModal') closeCatchupModal();
+});
+document.getElementById('catchupConfirmBtn').addEventListener('click', performCatchup);
 
 {
   const toggleBtn = document.getElementById('routineListToggle');
