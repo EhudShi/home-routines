@@ -475,7 +475,7 @@
       <h3>⏮ פספסתי משימות</h3>
       <button class="icon-btn" id="catchupCloseBtn">✕</button>
     </div>
-    <p class="hint">בחרו מאיזה תאריך פספסתם. כל שגרה עם משימה מתוכננת מהתאריך הזה ועד היום שלא סומנה כבוצעה — תתחיל להיספר מחדש מהיום, כדי שהלו"ז יישאר מפוזר ולא ייערם עומס על יום אחד. שגרות שבוצעו במועדן לא ייפגעו.</p>
+    <p class="hint">בחרו מאיזה תאריך פספסתם. כל משימה מתוכננת מהתאריך הזה ועד אתמול שלא סומנה כבוצעה תזוז קדימה באותו מספר הימים בדיוק — כך שמה שהיה מתוכנן לתאריך שבחרתם יהיה היום, מה שהיה מתוכנן ליום שאחריו יהיה מחר, וכן הלאה. המרווחים בין השגרות נשמרים. משימות שכבר מתוכננות להיום ואילך, וכאלה שבוצעו במועדן, לא ייפגעו.</p>
     <div class="field">
       <label>מתאריך</label>
       <input type="date" id="catchupDateInput">
@@ -1431,17 +1431,27 @@ async function performCatchup(){
   if(!fromISO){ errorEl.textContent = 'נא לבחור תאריך'; return; }
   if(fromISO >= todayStr){ errorEl.textContent = 'יש לבחור תאריך שכבר עבר'; return; }
 
-  const missed = effectiveOccurrencesInRange(fromISO, todayStr).filter(o => !isDone(o.date, o.routine.id));
-  const routineIds = [...new Set(missed.map(o => o.routine.id))];
-  if(routineIds.length === 0){
+  // A literal date-shift, not a per-routine restart: every missed occurrence moves forward
+  // by the SAME number of days (today minus the chosen date), so relative spacing between
+  // routines is preserved — whatever was on the chosen date lands on today, the day after
+  // lands on tomorrow, etc. Occurrences already due today or later are untouched.
+  const offsetDays = Math.round((parseISO(todayStr) - parseISO(fromISO)) / 86400000);
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yesterdayISO = dateISO(y.getFullYear(), y.getMonth(), y.getDate());
+
+  const missed = effectiveOccurrencesInRange(fromISO, yesterdayISO).filter(o => !isDone(o.date, o.routine.id));
+  if(missed.length === 0){
     errorEl.textContent = 'לא נמצאו שגרות שפוספסו בטווח הזה.';
     return;
   }
 
   const btn = document.getElementById('catchupConfirmBtn');
   btn.disabled = true;
-  for(const rid of routineIds){
-    await updateRoutine(rid, { startDate: todayStr });
+  for(const occ of missed){
+    const d = parseISO(occ.date);
+    d.setDate(d.getDate() + offsetDays);
+    const newDate = dateISO(d.getFullYear(), d.getMonth(), d.getDate());
+    await setOverride(occ.naturalDate, occ.routine.id, newDate);
   }
   btn.disabled = false;
   closeCatchupModal();
