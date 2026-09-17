@@ -293,9 +293,12 @@
   table.cal td.empty{background:var(--card-alt);}
   table.cal td .daynum{
     font-size:var(--fs-xs);color:var(--sub);margin-bottom:var(--sp-1);font-weight:600;font-variant-numeric:tabular-nums;
+    cursor:pointer;display:inline-block;
   }
+  table.cal td .daynum:hover{color:var(--accent);}
   table.cal td.today .daynum{color:var(--accent);}
   table.cal td.today{background:var(--today-bg);border-color:var(--accent);}
+  table.cal td.blocked-day{background:var(--card-alt);}
   .chip{
     display:flex;
     align-items:center;
@@ -467,14 +470,19 @@
         <div class="view-toggle">
           <button class="view-tab active" id="viewMonthBtn">חודשי</button>
           <button class="view-tab" id="viewWeekBtn">שבועי</button>
+          <button class="view-tab" id="viewHistoryBtn">היסטוריית ביצוע</button>
         </div>
-        <div class="month-nav">
+        <div class="month-nav" id="monthNavRow">
           <div class="navbtns">
             <button id="prevPeriod" aria-label="הקודם">‹</button>
             <button id="nextPeriod" aria-label="הבא">›</button>
           </div>
           <h2 id="periodTitle"></h2>
           <button class="preset-btn" id="todayBtn">היום</button>
+        </div>
+        <div class="field" id="historySearchRow" style="display:none;margin-bottom:var(--sp-3);">
+          <label>חיפוש לפי שם שגרה</label>
+          <input type="text" id="historySearchInput" placeholder="למשל: ניקוי">
         </div>
 
         <div class="stats-row" id="statsRow"></div>
@@ -496,6 +504,17 @@
       <button class="icon-btn" id="swapCloseBtn">✕</button>
     </div>
     <div id="swapList" class="swap-list"></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addDoneModal">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h3>➕ הוספת שגרה שבוצעה היום</h3>
+      <button class="icon-btn" id="addDoneCloseBtn">✕</button>
+    </div>
+    <p class="hint">בחרו שגרה שלא הייתה מתוכננת להיום אך בוצעה בפועל. הביצוע יירשם בהיסטוריה, וישמש כעוגן לחישוב המועד הבא שלה.</p>
+    <div id="addDoneList" class="swap-list"></div>
   </div>
 </div>
 
@@ -569,6 +588,9 @@ let localSchedule = {}; // flat map date_routineId -> true (planned occurrence),
 let scheduleCache = {}; // monthKey -> {data}, used when dbMode === 'live'
 let scheduleUnsubs = {};
 let scheduleHorizon = null; // {from, through} ISO strings spanning the last generated 30-day plan, or null
+let localBlockedDays = {}; // flat map dateISO -> true ("day off", no routines allowed), used only when dbMode !== 'live'
+let blockedDaysCache = {}; // monthKey -> {data}, used when dbMode === 'live'
+let blockedDaysUnsubs = {};
 let dayViewISO; // which single day the Day View card is showing
 let _lastKnownTodayISO;
 {
@@ -603,7 +625,7 @@ function saveLocal(){
   try{
     localStorage.setItem(LOCAL_KEY, JSON.stringify({
       routines, completions: localCompletions, overrides: localOverrides,
-      schedule: localSchedule, scheduleHorizon,
+      schedule: localSchedule, scheduleHorizon, blockedDays: localBlockedDays,
     }));
   }catch(e){}
 }
@@ -614,6 +636,14 @@ function isDone(dateISOStr, routineId){
   const mk = dateISOStr.slice(0,7);
   const data = completionsCache[mk];
   return !!(data && data[key]);
+}
+
+// Completion entries are stored as `true` (legacy) or as a richer record
+// `{done:true, completedAt:<full ISO timestamp>}` — both are truthy, so isDone() above needs
+// no change. This accessor normalizes either shape for the completion-history tab.
+function completionMeta(dateISOStr, routineId, rawValue){
+  if(rawValue && typeof rawValue === 'object') return { date: dateISOStr, routineId, completedAt: rawValue.completedAt || null };
+  return { date: dateISOStr, routineId, completedAt: null };
 }
 
 // ---------- Overrides (defer to another day / swap two occurrences) ----------
@@ -825,6 +855,58 @@ async function moveScheduledOccurrence(fromDateISO, routineId, toDateISO){
   renderActiveView();
 }
 
+// ---------- "Day off" (no-routines day) ----------
+// A user-declared constraint on scheduling, stored the same way as `schedule`/`overrides`:
+// sharded by month in Firestore, one flat map locally. generateReschedule treats every date
+// in here as unavailable for NEW placements; a completion that already happened there is
+// still preserved (see the kept-filter in scheduling.js).
+function getBlockedDaysFlat(){
+  if(dbMode !== 'live') return localBlockedDays;
+  return Object.assign({}, ...Object.values(blockedDaysCache));
+}
+function isBlockedDate(dateISOStr){
+  return !!getBlockedDaysFlat()[dateISOStr];
+}
+function neededBlockedDayMonthKeys(){
+  const keys = new Set(neededScheduleMonthKeys());
+  return [...keys];
+}
+function syncBlockedDaySubscriptions(neededKeys){
+  syncMonthlySubscriptions('blockedDays', neededKeys, blockedDaysCache, blockedDaysUnsubs, 'שגיאה בטעינת ימים ללא שגרות: ');
+}
+async function fetchBlockedDaysFlatForRange(startISO, endISO){
+  if(dbMode !== 'live') return localBlockedDays;
+  const flat = {};
+  for(const {y,m} of monthsSpan(startISO, endISO, 0)){
+    const snap = await db.doc('blockedDays/' + monthKey(y,m)).get();
+    if(snap.exists) Object.assign(flat, snap.data());
+  }
+  return flat;
+}
+async function setBlockedDay(dateISOStr, blocked){
+  if(dbMode !== 'live'){
+    if(blocked) localBlockedDays[dateISOStr] = true; else delete localBlockedDays[dateISOStr];
+    saveLocal();
+  } else {
+    try{
+      const mk = dateISOStr.slice(0,7);
+      const ref = db.doc('blockedDays/' + mk);
+      const snap = await ref.get();
+      const data = snap.exists ? { ...snap.data() } : {};
+      if(blocked) data[dateISOStr] = true; else delete data[dateISOStr];
+      await ref.set(data);
+    }catch(e){ showError('לא ניתן היה לשמור יום ללא שגרות: ' + (e && e.message ? e.message : e)); return; }
+  }
+  // Marking a day blocked must evict any not-yet-done occurrence already planned there and
+  // rebalance everything from that date forward — never touches the past, never touches
+  // completion history. Un-blocking simply lifts the constraint for the next reschedule.
+  if(blocked && dateISOStr >= todayISO()){
+    await runReschedule({ sinceISO: dateISOStr });
+  } else {
+    renderActiveView();
+  }
+}
+
 // One-time, non-destructive: for routines that predate the loadLevel/lastCompletedDate
 // upgrade, backfill lastCompletedDate from existing completion history so the new
 // anchor-based scheduler starts from the truth instead of treating everything as
@@ -903,9 +985,13 @@ async function runReschedule(opts){
     .map(key=>({ date:key.slice(0,10), routineId:key.slice(11) }))
     .filter(o=> o.date >= today && o.date <= horizonEnd);
 
+  const blockedFlat = await fetchBlockedDaysFlatForRange(today, horizonEnd);
+  const blockedDates = Object.keys(blockedFlat).filter(d=> !!blockedFlat[d]);
+  if(opts.blockedDates) opts.blockedDates.forEach(d=>{ if(!blockedDates.includes(d)) blockedDates.push(d); });
+
   const result = RoutineScheduling.generateReschedule({
     routines, todayISO: today, sinceISO: opts.sinceISO || today, horizonDays,
-    existingOccurrences,
+    existingOccurrences, blockedDates,
     isDoneFn: (date, routineId)=> isDone(date, routineId),
   });
 
@@ -928,16 +1014,24 @@ async function runReschedule(opts){
 // the day falls inside the last generated horizon, and otherwise falling back to the
 // legacy natural+override computation (unchanged, and what still serves every date the new
 // engine has never touched — historical dates, and anything beyond the current horizon).
-function resolveOccurrencesForDate(dateISO){
-  if(RoutineScheduling.isWithinHorizon(dateISO, scheduleHorizon)){
+function resolveOccurrencesForDate(dateISOStr){
+  let occs;
+  if(RoutineScheduling.isWithinHorizon(dateISOStr, scheduleHorizon)){
     const flat = getScheduleFlat();
-    return Object.keys(flat)
-      .filter(k=> k.slice(0,10) === dateISO)
+    occs = Object.keys(flat)
+      .filter(k=> k.slice(0,10) === dateISOStr)
       .map(k=> routines.find(r=> r.id === k.slice(11) && r.active !== false))
       .filter(Boolean)
-      .map(routine=> ({ routine, date: dateISO, naturalDate: dateISO, source: 'schedule' }));
+      .map(routine=> ({ routine, date: dateISOStr, naturalDate: dateISOStr, source: 'schedule' }));
+  } else {
+    occs = getOccurrencesForDate(parseISO(dateISOStr)).map(o=> Object.assign({}, o, { source: 'legacy' }));
   }
-  return getOccurrencesForDate(parseISO(dateISO)).map(o=> Object.assign({}, o, { source: 'legacy' }));
+  // A "day off" hides any not-yet-done occurrence; a completion that already happened there
+  // stays visible — the constraint is on future planning, never on past history.
+  if(isBlockedDate(dateISOStr)){
+    occs = occs.filter(o=> isDone(o.date, o.routine.id));
+  }
+  return occs;
 }
 function resolveOccurrencesInRange(startISO, endISO){
   const result = [];
@@ -974,6 +1068,7 @@ async function initBackend(){
     syncCompletionSubscriptions(neededMonthKeys());
     syncOverrideSubscriptions(neededOverrideMonthKeys());
     syncScheduleSubscriptions(neededScheduleMonthKeys());
+    syncBlockedDaySubscriptions(neededBlockedDayMonthKeys());
   }catch(e){
     showError('לא ניתן היה להתחבר למסד הנתונים, עובד במצב מקומי: ' + (e && e.message ? e.message : e));
     dbMode = 'local';
@@ -989,6 +1084,7 @@ function initLocalMode(){
     localOverrides = saved.overrides || {};
     localSchedule = saved.schedule || {};
     scheduleHorizon = saved.scheduleHorizon || null;
+    localBlockedDays = saved.blockedDays || {};
   } else {
     routines = DEFAULT_ROUTINES.map((r,i)=>({
       id: 'local'+i, name: r.name, intervalDays: r.interval, loadLevel: r.loadLevel || 2, startDate: todayISO(),
@@ -997,6 +1093,7 @@ function initLocalMode(){
     localCompletions = {};
     localSchedule = {};
     scheduleHorizon = null;
+    localBlockedDays = {};
     saveLocal();
   }
   routinesLoaded = true;
@@ -1089,12 +1186,15 @@ function syncOverrideSubscriptions(neededKeys){
   syncMonthlySubscriptions('overrides', neededKeys, overridesCache, overridesUnsubs, 'שגיאה בטעינת שינויים: ');
 }
 
-async function toggleCompletion(dateISOStr, routineId){
+// Sets (not toggles) the completion state for one occurrence. Marking done writes a
+// timestamped record — {done:true, completedAt} — so the completion-history tab has more
+// than just a date to show; unmarking removes it outright (an undone checkbox means it
+// didn't actually happen, so there is nothing to keep in the history).
+async function setCompletion(dateISOStr, routineId, done){
   const key = dateISOStr + '_' + routineId;
-  let nowDone;
   if(dbMode !== 'live'){
-    if(localCompletions[key]){ delete localCompletions[key]; nowDone = false; }
-    else { localCompletions[key] = true; nowDone = true; }
+    if(!done){ delete localCompletions[key]; }
+    else { localCompletions[key] = { done:true, completedAt: new Date().toISOString() }; }
     saveLocal();
     renderActiveView();
   } else {
@@ -1103,11 +1203,48 @@ async function toggleCompletion(dateISOStr, routineId){
       const ref = db.doc('completions/' + monthK);
       const snap = await ref.get();
       const data = snap.exists ? { ...snap.data() } : {};
-      if(data[key]){ delete data[key]; nowDone = false; } else { data[key] = true; nowDone = true; }
+      if(!done){ delete data[key]; }
+      else { data[key] = { done:true, completedAt: new Date().toISOString() }; }
       await ref.set(data);
     }catch(e){ showError('לא ניתן היה לשמור סימון ביצוע: ' + (e && e.message ? e.message : e)); return; }
   }
-  await syncLastCompletedDate(routineId, dateISOStr, nowDone);
+  await syncLastCompletedDate(routineId, dateISOStr, done);
+}
+
+async function toggleCompletion(dateISOStr, routineId){
+  await setCompletion(dateISOStr, routineId, !isDone(dateISOStr, routineId));
+}
+
+// "+ הוסף שגרה שבוצעה היום": records a real completion for a routine that was not planned
+// for today. It becomes a normal today-occurrence (added to `schedule`) so it shows up
+// consistently everywhere, gets marked done immediately (this IS the completion event, so
+// it becomes the new minimum-interval anchor), and the remaining future plan is recomputed
+// from that true anchor — exactly like any other completion, never a duplicate booking.
+async function addUnplannedCompletion(routineId){
+  const today = todayISO();
+  if(isDone(today, routineId)) return;
+  await applyScheduleChanges([], [{ date: today, routineId }]);
+  if(dbMode !== 'live') saveLocal();
+  await setCompletion(today, routineId, true);
+  await runReschedule({ sinceISO: today });
+}
+
+// Replaces the routine planned for ONE specific day with a different existing routine.
+// This changes only that day's plan — never an Actual Completion, never touches history —
+// and is only offered for days already governed by the new engine (source==='schedule');
+// hard constraints (max/day, load/day, minimum interval, day-off) are re-validated here via
+// the same pure rules Re-Schedule itself enforces, so a swap can never create an invalid day.
+async function swapScheduledOccurrence(dateISOStr, oldRoutineId, newRoutineId){
+  const currentRoutines = resolveOccurrencesForDate(dateISOStr).map(o=> o.routine);
+  const newRoutine = routines.find(r=> r.id === newRoutineId);
+  const blockedFlat = await fetchBlockedDaysFlatForRange(dateISOStr, dateISOStr);
+  const blockedSet = new Set(Object.keys(blockedFlat).filter(d=> !!blockedFlat[d]));
+  const result = RoutineScheduling.validateRoutineSwap(dateISOStr, currentRoutines, oldRoutineId, newRoutine, blockedSet);
+  if(!result.ok) return result;
+  await applyScheduleChanges([{date:dateISOStr, routineId:oldRoutineId}], [{date:dateISOStr, routineId:newRoutineId}]);
+  if(dbMode !== 'live') saveLocal();
+  renderActiveView();
+  return result;
 }
 
 async function addRoutine(name, interval, loadLevel){
@@ -1188,19 +1325,18 @@ function renderDayView(){
   const isToday = dayViewISO === iso;
   const viewDate = parseISO(dayViewISO);
   const occs = resolveOccurrencesForDate(dayViewISO);
+  const blocked = isBlockedDate(dayViewISO);
 
   const dateLabel = viewDate.toLocaleDateString('he-IL', { weekday:'long', day:'numeric', month:'long', year: isToday ? undefined : 'numeric' });
 
   let itemsHtml;
   const pending = occs.filter(o => !isDone(o.date, o.routine.id));
   if(occs.length === 0){
-    itemsHtml = `<div class="today-empty">אין משימות מתוכננות ל${isToday?'היום':'יום זה'} 🎉</div>`;
+    itemsHtml = `<div class="today-empty">${blocked ? '🚫 יום זה מסומן כיום ללא שגרות' : `אין משימות מתוכננות ל${isToday?'היום':'יום זה'} 🎉`}</div>`;
   } else {
     itemsHtml = '<div class="today-list">' + occs.map(o=>{
       const done = isDone(o.date, o.routine.id);
-      const swapBtn = o.source !== 'schedule'
-        ? `<button class="occ-swap-btn" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}">🔄</button>`
-        : '';
+      const swapBtn = `<button class="occ-swap-btn" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}" data-source="${o.source}">🔄</button>`;
       return `<div class="today-item ${done?'done':''}">
         <label class="today-item-main">
           <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
@@ -1213,6 +1349,7 @@ function renderDayView(){
 
   const remindDisabled = pending.length === 0;
   const dismissDisabled = pending.length === 0;
+  const dayOffLabel = blocked ? '✅ בטל סימון "יום ללא שגרות"' : '🚫 סמן כ"יום ללא שגרות"';
   holder.innerHTML = `
     <div class="today-card">
       <div class="day-nav">
@@ -1222,6 +1359,10 @@ function renderDayView(){
       </div>
       <p class="today-date">${dateLabel}</p>
       ${itemsHtml}
+      <div class="today-actions">
+        <button class="remind-btn" id="dayOffBtn">${dayOffLabel}</button>
+        ${isToday ? `<button class="remind-btn" id="addDoneBtn">➕ הוסף שגרה שבוצעה היום</button>` : ''}
+      </div>
       ${isToday ? `
       <div class="today-actions">
         <button class="remind-btn" id="dismissAllBtn" ${dismissDisabled?'disabled':''}>😴 דחה הכל למחר</button>
@@ -1237,12 +1378,13 @@ function renderDayView(){
   });
   holder.querySelectorAll('.occ-swap-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid });
+      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid, source: btn.dataset.source });
     });
   });
   document.getElementById('dayPrevBtn').addEventListener('click', ()=> goToDay(RoutineScheduling.addDaysISO(dayViewISO, -1)));
   document.getElementById('dayNextBtn').addEventListener('click', ()=> goToDay(RoutineScheduling.addDaysISO(dayViewISO, 1)));
   document.getElementById('dayTodayBtn').addEventListener('click', ()=> goToDay(todayISO()));
+  document.getElementById('dayOffBtn').addEventListener('click', ()=> setBlockedDay(dayViewISO, !blocked));
 
   if(isToday){
     const remindBtn = document.getElementById('remindBtn');
@@ -1251,8 +1393,10 @@ function renderDayView(){
     }
     const dismissBtn = document.getElementById('dismissAllBtn');
     if(dismissBtn && !dismissDisabled){
-      dismissBtn.addEventListener('click', ()=> dismissAllToday(pending));
+      dismissBtn.addEventListener('click', ()=> dismissAllToday());
     }
+    const addDoneBtn = document.getElementById('addDoneBtn');
+    if(addDoneBtn) addDoneBtn.addEventListener('click', ()=> openAddDoneModal(occs.map(o=>o.routine.id)));
   }
 }
 
@@ -1262,20 +1406,17 @@ function goToDay(iso){
   renderDayView();
 }
 
-async function dismissAllToday(pendingAtRenderTime){
-  const tomorrowISOStr = RoutineScheduling.addDaysISO(todayISO(), 1);
-  for(const occ of pendingAtRenderTime){
-    // re-check now, not just at render time: a checkbox toggled a moment ago might not
-    // have been reflected in the "pending" list this button was built from.
-    if(isDone(occ.date, occ.routine.id)) continue;
-    if(occ.source === 'schedule'){
-      await moveScheduledOccurrence(occ.date, occ.routine.id, tomorrowISOStr);
-    } else {
-      await setOverride(occ.naturalDate, occ.routine.id, tomorrowISOStr);
-    }
-  }
+// "דחה הכל למחר" does NOT mean "copy today's routines onto tomorrow" (that could easily
+// overload tomorrow past the caps). It means: empty today, then re-run the full scheduling
+// logic for the rest of the horizon from each routine's true anchor — respecting minimum
+// interval, the 3/day and load<=6 caps, and any day-off — so routines are deferred only as
+// far as actually necessary and stay balanced. Today is passed as a transient blocked date
+// for this one run only (it is not persisted as a "day off").
+async function dismissAllToday(){
+  const today = todayISO();
+  await runReschedule({ sinceISO: today, blockedDates: [today] });
   const note = document.getElementById('remindNote');
-  if(note) note.textContent = 'המשימות שלא סומנו כבוצעו נדחו למחר.';
+  if(note) note.textContent = 'היום פונה מהשגרות שלא בוצעו, ויתרת החודש חושבה מחדש כדי לשמור על פיזור מאוזן.';
 }
 
 function addReminderForPending(pendingRoutines){
@@ -1295,6 +1436,7 @@ function addReminderForPending(pendingRoutines){
 let swapContext = null;
 
 function openSwapPicker(ctx){
+  if(ctx.source === 'schedule'){ openScheduledSwapPicker(ctx); return; }
   swapContext = ctx;
   const end = parseISO(ctx.date); end.setDate(end.getDate()+6);
   const endISOStr = dateISO(end.getFullYear(), end.getMonth(), end.getDate());
@@ -1339,18 +1481,86 @@ async function performSwap(a, b){
   await setOverride(b.naturalDate, b.routineId, a.date);
 }
 
+// Swap picker for a day governed by the new engine (source==='schedule'): offers ANY active
+// routine as a replacement (not just one with a nearby occurrence), each pre-checked against
+// the same hard rules Re-Schedule enforces, with the reason shown inline when disabled.
+async function openScheduledSwapPicker(ctx){
+  swapContext = ctx;
+  document.getElementById('swapModal').classList.add('open');
+  const list = document.getElementById('swapList');
+  list.innerHTML = `<div class="empty-state">בודק זמינות…</div>`;
+
+  const currentRoutines = resolveOccurrencesForDate(ctx.date).map(o=> o.routine);
+  const blockedFlat = await fetchBlockedDaysFlatForRange(ctx.date, ctx.date);
+  const blockedSet = new Set(Object.keys(blockedFlat).filter(d=> !!blockedFlat[d]));
+  const candidates = routines.filter(r=> r.active !== false && r.id !== ctx.routineId);
+
+  if(!swapContext || swapContext.date !== ctx.date || swapContext.routineId !== ctx.routineId) return; // modal closed/changed meanwhile
+
+  if(candidates.length === 0){
+    list.innerHTML = `<div class="empty-state">אין שגרות אחרות להחלפה.</div>`;
+    return;
+  }
+  const reasonText = {
+    duplicate: 'כבר מתוכננת ליום זה',
+    count: 'היום כבר בעומס המרבי של 3 שגרות',
+    load: 'יחרוג מעומס יומי מרבי של 6',
+    blocked: 'היום מסומן כיום ללא שגרות',
+  };
+  list.innerHTML = candidates.map(r=>{
+    const check = RoutineScheduling.validateRoutineSwap(ctx.date, currentRoutines, ctx.routineId, r, blockedSet);
+    const detail = check.ok ? loadLevelText(r)
+      : (check.reason === 'interval' ? `זמינה רק החל מ-${check.earliest}` : (reasonText[check.reason] || ''));
+    return `<button class="swap-candidate" data-rid="${escapeHtml(r.id)}" ${check.ok?'':'disabled'} style="${check.ok?'':'opacity:.5;cursor:not-allowed;'}">
+      <span class="dot" style="background:${r.color}"></span>
+      <span class="swap-candidate-name">${escapeHtml(r.name)}</span>
+      <span class="swap-candidate-date">${detail}</span>
+    </button>`;
+  }).join('');
+  list.querySelectorAll('.swap-candidate:not([disabled])').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const date = ctx.date, oldRoutineId = ctx.routineId;
+      closeSwapPicker();
+      await swapScheduledOccurrence(date, oldRoutineId, btn.dataset.rid);
+    });
+  });
+}
+
+// ---------- Add an unplanned completion ("+ הוסף שגרה שבוצעה היום") ----------
+function openAddDoneModal(alreadyTodayRoutineIds){
+  const candidates = routines.filter(r=> r.active !== false && !alreadyTodayRoutineIds.includes(r.id));
+  const list = document.getElementById('addDoneList');
+  if(candidates.length === 0){
+    list.innerHTML = `<div class="empty-state">כל השגרות הפעילות כבר מופיעות היום.</div>`;
+  } else {
+    list.innerHTML = candidates.map(r=>`
+      <button class="swap-candidate" data-rid="${escapeHtml(r.id)}">
+        <span class="dot" style="background:${r.color}"></span>
+        <span class="swap-candidate-name">${escapeHtml(r.name)}</span>
+        <span class="swap-candidate-date">${loadLevelText(r)}</span>
+      </button>`).join('');
+    list.querySelectorAll('.swap-candidate').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        closeAddDoneModal();
+        await addUnplannedCompletion(btn.dataset.rid);
+      });
+    });
+  }
+  document.getElementById('addDoneModal').classList.add('open');
+}
+function closeAddDoneModal(){ document.getElementById('addDoneModal').classList.remove('open'); }
+
 // ---------- Occurrence menu (month view: no room for a swap icon next to every chip) ----------
 let openMenuEl = null;
 
 function openOccurrenceMenu(occ, anchorEl){
   closeOccurrenceMenu();
   const done = isDone(occ.date, occ.routine.id);
-  const canSwap = occ.source !== 'schedule';
   const menu = document.createElement('div');
   menu.className = 'occ-menu';
   menu.innerHTML = `
     <button data-action="toggle">${done ? '↩ בטל סימון ביצוע' : '✓ סמן כבוצע'}</button>
-    ${canSwap ? `<button data-action="swap">🔄 החלף עם שגרה אחרת</button>` : ''}
+    <button data-action="swap">🔄 החלף עם שגרה אחרת</button>
   `;
   document.body.appendChild(menu);
   const rect = anchorEl.getBoundingClientRect();
@@ -1364,10 +1574,10 @@ function openOccurrenceMenu(occ, anchorEl){
     closeOccurrenceMenu();
   });
   const swapBtn = menu.querySelector('[data-action="swap"]');
-  if(swapBtn) swapBtn.addEventListener('click', (e)=>{
+  swapBtn.addEventListener('click', (e)=>{
     e.stopPropagation();
     closeOccurrenceMenu();
-    openSwapPicker({ date: occ.date, naturalDate: occ.naturalDate, routineId: occ.routine.id });
+    openSwapPicker({ date: occ.date, naturalDate: occ.naturalDate, routineId: occ.routine.id, source: occ.source });
   });
 
   openMenuEl = menu;
@@ -1532,9 +1742,12 @@ function renderCalendar(){
     const iso = dateISO(viewYear, viewMonth, d);
     const td = document.createElement('td');
     if(iso === todayStr) td.classList.add('today');
+    if(isBlockedDate(iso)) td.classList.add('blocked-day');
     const dn = document.createElement('div');
     dn.className = 'daynum';
-    dn.textContent = d;
+    dn.textContent = d + (isBlockedDate(iso) ? ' 🚫' : '');
+    dn.title = 'מעבר לתצוגת יום';
+    dn.addEventListener('click', ()=> goToDay(iso));
     td.appendChild(dn);
 
     (grouped[iso] || []).forEach(occ=>{
@@ -1593,9 +1806,7 @@ function renderWeek(){
       ? `<div class="week-day-empty">אין משימות</div>`
       : occs.map(o=>{
           const done = isDone(o.date, o.routine.id);
-          const swapBtn = o.source !== 'schedule'
-            ? `<button class="occ-swap-btn-sm" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}">🔄</button>`
-            : '';
+          const swapBtn = `<button class="occ-swap-btn-sm" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}" data-source="${o.source}">🔄</button>`;
           return `<div class="week-item ${done?'done':''}">
             <label class="week-item-main">
               <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
@@ -1605,10 +1816,11 @@ function renderWeek(){
             ${swapBtn}
           </div>`;
         }).join('');
+    const dayBlocked = isBlockedDate(iso);
     return `
       <div class="week-day ${isToday?'is-today':''}">
-        <div class="week-day-header">
-          <span class="week-day-name">${HEB_WEEKDAY_FULL[d.getDay()]}</span>
+        <div class="week-day-header" data-goto="${iso}" style="cursor:pointer;">
+          <span class="week-day-name">${HEB_WEEKDAY_FULL[d.getDay()]}${dayBlocked ? ' 🚫' : ''}</span>
           <span class="week-day-date">${d.getDate()} ב${HEB_MONTHS[d.getMonth()]}</span>
         </div>
         <div class="week-items">${itemsHtml}</div>
@@ -1624,14 +1836,77 @@ function renderWeek(){
     });
   });
   holder.querySelectorAll('.occ-swap-btn-sm').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid });
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid, source: btn.dataset.source });
     });
   });
+  holder.querySelectorAll('.week-day-header[data-goto]').forEach(hdr=>{
+    hdr.addEventListener('click', ()=> goToDay(hdr.dataset.goto));
+  });
+}
+
+// ---------- Completion history tab ----------
+// Reads straight from the same `completions` store everything else uses — a plain listing
+// with client-side name search, refreshed each time the tab is opened. Never affected by
+// Re-Schedule, since it only ever reads; nothing here can mutate a completion.
+let historyEntries = null; // null = not loaded yet for this tab-open
+let historySearchText = '';
+
+async function loadHistoryEntries(){
+  const list = [];
+  if(dbMode !== 'live'){
+    Object.keys(localCompletions).forEach(key=>{
+      list.push(completionMeta(key.slice(0,10), key.slice(11), localCompletions[key]));
+    });
+  } else {
+    const snap = await db.collection('completions').get();
+    snap.forEach(doc=>{
+      const data = doc.data() || {};
+      Object.keys(data).forEach(key=>{
+        list.push(completionMeta(key.slice(0,10), key.slice(11), data[key]));
+      });
+    });
+  }
+  list.sort((a,b)=> a.date < b.date ? 1 : a.date > b.date ? -1 : String(a.completedAt||'') < String(b.completedAt||'') ? 1 : -1);
+  historyEntries = list;
+}
+
+function renderHistoryTab(){
+  document.getElementById('periodTitle').textContent = 'היסטוריית ביצוע';
+  const holder = document.getElementById('calHolder');
+  if(historyEntries === null){
+    holder.innerHTML = `<div class="skeleton" style="height:200px;"></div>`;
+    document.getElementById('statsRow').innerHTML = '';
+    loadHistoryEntries().then(()=>{ if(viewMode==='history') renderActiveView(); });
+    return;
+  }
+  const q = historySearchText.trim();
+  const filtered = q ? historyEntries.filter(e=>{
+    const r = routines.find(x=>x.id===e.routineId);
+    return r && r.name.includes(q);
+  }) : historyEntries;
+
+  document.getElementById('statsRow').innerHTML = `<div class="stat"><b>${filtered.length}</b>ביצועים בהיסטוריה</div>`;
+  if(filtered.length === 0){
+    holder.innerHTML = `<div class="empty-state"><div class="big">🗂️</div>${q ? 'לא נמצאו ביצועים תואמים.' : 'עדיין אין ביצועים בהיסטוריה.'}</div>`;
+    return;
+  }
+  holder.innerHTML = filtered.map(e=>{
+    const r = routines.find(x=>x.id===e.routineId);
+    const d = parseISO(e.date);
+    const label = `${HEB_WEEKDAY_FULL[d.getDay()]}, ${d.getDate()} ב${HEB_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    return `<div class="routine-item">
+      <span class="dot" style="background:${r ? r.color : '#999'}"></span>
+      <span class="routine-name">${escapeHtml(r ? r.name : '(שגרה שנמחקה)')}</span>
+      <span class="routine-freq">${label}</span>
+    </div>`;
+  }).join('');
 }
 
 function renderActiveView(){
   if(viewMode === 'week') renderWeek();
+  else if(viewMode === 'history') renderHistoryTab();
   else renderCalendar();
   renderDayView();
 }
@@ -1684,6 +1959,7 @@ function syncAllSubscriptionsForCurrentView(){
   syncCompletionSubscriptions(neededMonthKeys());
   syncOverrideSubscriptions(neededOverrideMonthKeys());
   syncScheduleSubscriptions(neededScheduleMonthKeys());
+  syncBlockedDaySubscriptions(neededBlockedDayMonthKeys());
 }
 
 function goToMonth(y, m){
@@ -1701,11 +1977,21 @@ function setViewMode(mode){
   viewMode = mode;
   document.getElementById('viewMonthBtn').classList.toggle('active', mode==='month');
   document.getElementById('viewWeekBtn').classList.toggle('active', mode==='week');
+  document.getElementById('viewHistoryBtn').classList.toggle('active', mode==='history');
+  document.getElementById('monthNavRow').style.display = mode==='history' ? 'none' : 'flex';
+  document.getElementById('historySearchRow').style.display = mode==='history' ? 'block' : 'none';
+  document.getElementById('rescheduleOpenBtn').style.display = mode==='history' ? 'none' : 'block';
+  if(mode==='history') historyEntries = null; // reload fresh every time the tab is opened
   syncAllSubscriptionsForCurrentView();
   renderActiveView();
 }
 document.getElementById('viewMonthBtn').addEventListener('click', ()=> setViewMode('month'));
 document.getElementById('viewWeekBtn').addEventListener('click', ()=> setViewMode('week'));
+document.getElementById('viewHistoryBtn').addEventListener('click', ()=> setViewMode('history'));
+document.getElementById('historySearchInput').addEventListener('input', (e)=>{
+  historySearchText = e.target.value;
+  renderHistoryTab();
+});
 
 document.getElementById('prevPeriod').addEventListener('click', ()=>{
   if(viewMode === 'week'){
@@ -1732,6 +2018,11 @@ document.getElementById('todayBtn').addEventListener('click', ()=>{
 document.getElementById('swapCloseBtn').addEventListener('click', closeSwapPicker);
 document.getElementById('swapModal').addEventListener('click', (e)=>{
   if(e.target.id === 'swapModal') closeSwapPicker();
+});
+
+document.getElementById('addDoneCloseBtn').addEventListener('click', closeAddDoneModal);
+document.getElementById('addDoneModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'addDoneModal') closeAddDoneModal();
 });
 
 {

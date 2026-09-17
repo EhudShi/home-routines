@@ -66,7 +66,8 @@
     });
     return state;
   }
-  function canPlace(state, date, routine) {
+  function canPlace(state, date, routine, blockedSet) {
+    if (blockedSet && blockedSet.has(date)) return false; // "day off" — never auto-fill
     var st = state[date];
     if (!st) return true;
     if (st.routineIds[routine.id]) return false; // same routine can't occur twice on one day
@@ -80,15 +81,36 @@
     st.count += 1;
     st.load += normalizeLoadLevel(routine);
   }
-  function findEarliestSlot(state, earliestAllowedISO, horizonEndISO, routine) {
+  function findEarliestSlot(state, earliestAllowedISO, horizonEndISO, routine, blockedSet) {
     var cur = earliestAllowedISO;
     var guard = 0;
     while (cur <= horizonEndISO && guard < 5000) {
-      if (canPlace(state, cur, routine)) return cur;
+      if (canPlace(state, cur, routine, blockedSet)) return cur;
       cur = addDaysISO(cur, 1);
       guard++;
     }
     return null;
+  }
+
+  // ---------- Swap validation: replacing the routine planned for ONE specific day ----------
+  // Pure decision only — never mutates anything. `currentRoutines` are the routine objects
+  // currently occupying that day (including the one being replaced). Used both by the "swap
+  // a scheduled routine for another" feature and, indirectly, documents the same hard rules
+  // Re-Schedule itself enforces (max/day, load/day, minimum interval, no day-off violation).
+  function validateRoutineSwap(dateISO, currentRoutines, oldRoutineId, newRoutine, blockedSet) {
+    if (!newRoutine) return { ok: false, reason: 'not-found' };
+    if (blockedSet && blockedSet.has(dateISO)) return { ok: false, reason: 'blocked' };
+    if (newRoutine.id === oldRoutineId) return { ok: true };
+    var others = (currentRoutines || []).filter(function (r) { return r.id !== oldRoutineId; });
+    if (others.some(function (r) { return r.id === newRoutine.id; })) {
+      return { ok: false, reason: 'duplicate' };
+    }
+    var due = earliestDueDate(newRoutine, dateISO);
+    if (due > dateISO) return { ok: false, reason: 'interval', earliest: due };
+    if (others.length + 1 > MAX_ROUTINES_PER_DAY) return { ok: false, reason: 'count' };
+    var load = others.reduce(function (s, r) { return s + normalizeLoadLevel(r); }, 0) + normalizeLoadLevel(newRoutine);
+    if (load > MAX_DAILY_LOAD) return { ok: false, reason: 'load' };
+    return { ok: true };
   }
 
   // ---------- Re-schedule the next `horizonDays` days ----------
@@ -109,6 +131,7 @@
     var horizonDays = opts.horizonDays || DEFAULT_HORIZON_DAYS;
     var existingOccurrences = opts.existingOccurrences || [];
     var isDoneFn = opts.isDoneFn || function () { return false; };
+    var blockedSet = new Set(opts.blockedDates || []);
 
     var horizonEndISO = addDaysISO(todayISO, horizonDays - 1);
     var active = routines.filter(function (r) { return r.active !== false; });
@@ -119,13 +142,16 @@
       return o.date >= todayISO && o.date <= horizonEndISO && byId[o.routineId];
     });
 
+    // A "day off" (blockedSet) may never hold a new/pending placement, but a completion
+    // that already happened there is untouchable history and is kept regardless.
     var kept = [];
     var lastPending = {};
     inHorizon.forEach(function (o) {
       var done = !!isDoneFn(o.date, o.routineId);
-      if (o.date < sinceISO || done) {
+      if (done) { kept.push(o); return; }
+      if (o.date < sinceISO && !blockedSet.has(o.date)) {
         kept.push(o);
-        if (!done) lastPending[o.routineId] = maxISO(lastPending[o.routineId], o.date);
+        lastPending[o.routineId] = maxISO(lastPending[o.routineId], o.date);
       }
     });
 
@@ -157,7 +183,7 @@
       queue.sort(byUrgency);
       var entry = queue.shift();
       if (entry.cursor > horizonEndISO) continue;
-      var slot = findEarliestSlot(state, entry.cursor, horizonEndISO, entry.routine);
+      var slot = findEarliestSlot(state, entry.cursor, horizonEndISO, entry.routine, blockedSet);
       if (!slot) {
         unplaced.push({ routineId: entry.routine.id, afterDate: entry.cursor });
         continue;
@@ -224,6 +250,7 @@
     canPlace: canPlace,
     placeOn: placeOn,
     findEarliestSlot: findEarliestSlot,
+    validateRoutineSwap: validateRoutineSwap,
     generateReschedule: generateReschedule,
     isWithinHorizon: isWithinHorizon,
     advanceDayViewOnRollover: advanceDayViewOnRollover,
