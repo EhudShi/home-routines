@@ -113,6 +113,30 @@
     return { ok: true };
   }
 
+  // ---------- Deleting one routine's occurrence from one day, then relocating it ----------
+  // Pure decision only. Removes ONLY this routine's placement on `removedDate` and finds
+  // where it belongs instead, purely from its own minimum-interval anchor (last actual
+  // completion + interval, never earlier) — without touching any other routine's already-
+  // planned days. `removedDate` itself is always excluded from the search, since the whole
+  // point is "not on this day"; every other hard rule (max/day, load/day, day-off) still
+  // applies via the normal placement machinery.
+  function rescheduleOneRoutine(opts) {
+    var routine = opts.routine;
+    var todayISO = opts.todayISO;
+    var removedDate = opts.removedDate;
+    var horizonDays = opts.horizonDays || DEFAULT_HORIZON_DAYS;
+    var otherOccurrences = opts.otherOccurrences || [];
+    var routinesById = opts.routinesById || {};
+    var blockedSet = new Set(opts.blockedDates || []);
+    blockedSet.add(removedDate);
+
+    var horizonEndISO = addDaysISO(todayISO, horizonDays - 1);
+    var state = buildDayState(otherOccurrences, routinesById);
+    var earliestAllowed = clampToToday(earliestDueDate(routine, todayISO), todayISO);
+    var slot = findEarliestSlot(state, earliestAllowed, horizonEndISO, routine, blockedSet);
+    return { date: slot };
+  }
+
   // ---------- Re-schedule the next `horizonDays` days ----------
   // existingOccurrences: [{date, routineId}] — whatever is currently in the persisted
   //   schedule store within the horizon (both future-planned and, for `today`, possibly
@@ -251,6 +275,7 @@
     placeOn: placeOn,
     findEarliestSlot: findEarliestSlot,
     validateRoutineSwap: validateRoutineSwap,
+    rescheduleOneRoutine: rescheduleOneRoutine,
     generateReschedule: generateReschedule,
     isWithinHorizon: isWithinHorizon,
     advanceDayViewOnRollover: advanceDayViewOnRollover,

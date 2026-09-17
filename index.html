@@ -140,12 +140,12 @@
   .today-item span.name{font-size:var(--fs-base);font-weight:500;color:var(--hero-ink);}
   .today-item.done .today-item-main span.name{opacity:.6;text-decoration:line-through;}
   .today-empty{font-size:var(--fs-base);color:var(--hero-ink-sub);padding:var(--sp-2) 0;}
-  .occ-swap-btn{
+  .occ-swap-btn, .occ-del-btn{
     background:none;border:none;color:var(--hero-ink);opacity:.8;
     font-size:1rem;padding:var(--sp-2);border-radius:var(--radius-sm);cursor:pointer;flex-shrink:0;
     transition:background .15s var(--ease-out), opacity .15s var(--ease-out);
   }
-  .occ-swap-btn:hover{opacity:1;background:var(--hero-item-bg-hover);}
+  .occ-swap-btn:hover, .occ-del-btn:hover{opacity:1;background:var(--hero-item-bg-hover);}
   .today-actions{display:flex;flex-direction:column;gap:var(--sp-2);margin-top:var(--sp-3);}
   .remind-btn{
     display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
@@ -343,12 +343,13 @@
   .week-item span.wname{font-size:var(--fs-sm);}
   .week-item.done .week-item-main span.wname{opacity:.5;text-decoration:line-through;}
   .week-day-empty{font-size:var(--fs-xs);color:var(--sub);}
-  .occ-swap-btn-sm{
+  .occ-swap-btn-sm, .occ-del-btn-sm{
     background:none;border:none;color:var(--sub);font-size:.95rem;
     padding:5px 7px;cursor:pointer;border-radius:var(--radius-sm);flex-shrink:0;
     transition:background .15s var(--ease-out), color .15s var(--ease-out);
   }
   .occ-swap-btn-sm:hover{background:var(--card-alt);color:var(--accent);}
+  .occ-del-btn-sm:hover{background:var(--danger-light);color:var(--danger);}
 
   .occ-menu{
     position:absolute;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-md);
@@ -1247,6 +1248,41 @@ async function swapScheduledOccurrence(dateISOStr, oldRoutineId, newRoutineId){
   return result;
 }
 
+// Deletes ONE routine's occurrence from ONE specific day (not a completion, not touching
+// history) and relocates it purely by its own minimum-interval anchor — the next occurrence
+// lands on the earliest day, from its true due date onward, that still respects the 3/day
+// and load<=6 caps and any day-off, and is never the removed day itself. Only ever moves
+// this one routine; every other routine's already-planned day is left exactly as it was.
+async function removeScheduledOccurrence(dateISOStr, routineId){
+  if(isDone(dateISOStr, routineId)) return { ok:false, reason:'done' };
+  const routine = routines.find(r=> r.id === routineId);
+  if(!routine) return { ok:false, reason:'not-found' };
+
+  const today = todayISO();
+  const horizonDays = RoutineScheduling.DEFAULT_HORIZON_DAYS;
+  const horizonEnd = RoutineScheduling.addDaysISO(today, horizonDays - 1);
+
+  const flat = await fetchScheduleFlatForRange(today, horizonEnd);
+  const otherOccurrences = Object.keys(flat)
+    .map(key=>({ date:key.slice(0,10), routineId:key.slice(11) }))
+    .filter(o=> o.date >= today && o.date <= horizonEnd && !(o.date === dateISOStr && o.routineId === routineId));
+  const routinesById = {};
+  routines.forEach(r=> routinesById[r.id] = r);
+  const blockedFlat = await fetchBlockedDaysFlatForRange(today, horizonEnd);
+  const blockedDates = Object.keys(blockedFlat).filter(d=> !!blockedFlat[d]);
+
+  const result = RoutineScheduling.rescheduleOneRoutine({
+    routine, routinesById, todayISO: today, horizonDays,
+    removedDate: dateISOStr, otherOccurrences, blockedDates,
+  });
+
+  const toAdd = result.date ? [{ date: result.date, routineId }] : [];
+  await applyScheduleChanges([{ date: dateISOStr, routineId }], toAdd);
+  if(dbMode !== 'live') saveLocal();
+  renderActiveView();
+  return { ok:true, newDate: result.date };
+}
+
 async function addRoutine(name, interval, loadLevel){
   loadLevel = RoutineScheduling.normalizeLoadLevel({ loadLevel });
   if(dbMode !== 'live'){
@@ -1337,12 +1373,14 @@ function renderDayView(){
     itemsHtml = '<div class="today-list">' + occs.map(o=>{
       const done = isDone(o.date, o.routine.id);
       const swapBtn = `<button class="occ-swap-btn" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}" data-source="${o.source}">🔄</button>`;
+      const delBtn = done ? '' : `<button class="occ-del-btn" title="הסר מהיום הזה ושבץ מחדש לפי התדירות" data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">🗑</button>`;
       return `<div class="today-item ${done?'done':''}">
         <label class="today-item-main">
           <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
           <span class="name">${escapeHtml(o.routine.name)}</span>
         </label>
         ${swapBtn}
+        ${delBtn}
       </div>`;
     }).join('') + '</div>';
   }
@@ -1363,6 +1401,7 @@ function renderDayView(){
         <button class="remind-btn" id="dayOffBtn">${dayOffLabel}</button>
         ${isToday ? `<button class="remind-btn" id="addDoneBtn">➕ הוסף שגרה שבוצעה היום</button>` : ''}
       </div>
+      <p class="remind-note" id="dayActionNote"></p>
       ${isToday ? `
       <div class="today-actions">
         <button class="remind-btn" id="dismissAllBtn" ${dismissDisabled?'disabled':''}>😴 דחה הכל למחר</button>
@@ -1379,6 +1418,18 @@ function renderDayView(){
   holder.querySelectorAll('.occ-swap-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid, source: btn.dataset.source });
+    });
+  });
+  holder.querySelectorAll('.occ-del-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const routine = routines.find(r=>r.id===btn.dataset.rid);
+      const result = await removeScheduledOccurrence(btn.dataset.date, btn.dataset.rid);
+      const note = document.getElementById('dayActionNote');
+      if(note && result && result.ok){
+        note.textContent = result.newDate
+          ? `"${routine ? routine.name : ''}" הוסרה מהיום הזה ושובצה מחדש ל-${result.newDate} לפי התדירות שלה.`
+          : `"${routine ? routine.name : ''}" הוסרה מהיום הזה, אך לא נמצא תאריך פנוי לשיבוצה מחדש בטווח של 30 הימים הקרובים.`;
+      }
     });
   });
   document.getElementById('dayPrevBtn').addEventListener('click', ()=> goToDay(RoutineScheduling.addDaysISO(dayViewISO, -1)));
@@ -1561,6 +1612,7 @@ function openOccurrenceMenu(occ, anchorEl){
   menu.innerHTML = `
     <button data-action="toggle">${done ? '↩ בטל סימון ביצוע' : '✓ סמן כבוצע'}</button>
     <button data-action="swap">🔄 החלף עם שגרה אחרת</button>
+    ${done ? '' : '<button data-action="delete">🗑 הסר מהיום הזה</button>'}
   `;
   document.body.appendChild(menu);
   const rect = anchorEl.getBoundingClientRect();
@@ -1578,6 +1630,12 @@ function openOccurrenceMenu(occ, anchorEl){
     e.stopPropagation();
     closeOccurrenceMenu();
     openSwapPicker({ date: occ.date, naturalDate: occ.naturalDate, routineId: occ.routine.id, source: occ.source });
+  });
+  const delBtn = menu.querySelector('[data-action="delete"]');
+  if(delBtn) delBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    closeOccurrenceMenu();
+    removeScheduledOccurrence(occ.date, occ.routine.id);
   });
 
   openMenuEl = menu;
@@ -1807,6 +1865,7 @@ function renderWeek(){
       : occs.map(o=>{
           const done = isDone(o.date, o.routine.id);
           const swapBtn = `<button class="occ-swap-btn-sm" title="החלף עם שגרה אחרת" data-date="${o.date}" data-natural="${escapeHtml(o.naturalDate)}" data-rid="${escapeHtml(o.routine.id)}" data-source="${o.source}">🔄</button>`;
+          const delBtn = done ? '' : `<button class="occ-del-btn-sm" title="הסר מהיום הזה ושבץ מחדש לפי התדירות" data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">🗑</button>`;
           return `<div class="week-item ${done?'done':''}">
             <label class="week-item-main">
               <input type="checkbox" ${done?'checked':''} data-date="${o.date}" data-rid="${escapeHtml(o.routine.id)}">
@@ -1814,6 +1873,7 @@ function renderWeek(){
               <span class="wname">${escapeHtml(o.routine.name)}</span>
             </label>
             ${swapBtn}
+            ${delBtn}
           </div>`;
         }).join('');
     const dayBlocked = isBlockedDate(iso);
@@ -1839,6 +1899,12 @@ function renderWeek(){
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       openSwapPicker({ date: btn.dataset.date, naturalDate: btn.dataset.natural, routineId: btn.dataset.rid, source: btn.dataset.source });
+    });
+  });
+  holder.querySelectorAll('.occ-del-btn-sm').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      removeScheduledOccurrence(btn.dataset.date, btn.dataset.rid);
     });
   });
   holder.querySelectorAll('.week-day-header[data-goto]').forEach(hdr=>{
