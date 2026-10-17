@@ -1,0 +1,47 @@
+name: Daily Telegram reminder
+
+# GitHub cron runs in UTC, Israel switches between UTC+2 and UTC+3. Both entries fire every
+# day; the script only sends when it is actually the 20:00 hour in Asia/Jerusalem.
+on:
+  schedule:
+    - cron: '0 17 * * *'
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'force = send today''s reminder now; setup = reply in Telegram with your chat id'
+        type: choice
+        options: [force, setup]
+        default: force
+
+permissions:
+  contents: read
+  actions: write # only used to keep this scheduled workflow from being auto-disabled
+
+concurrency:
+  group: daily-telegram
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Send reminder
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOTIFY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'scheduled' }}
+        run: node notify/daily-telegram.js
+      # GitHub disables scheduled workflows in a public repo after 60 days without repo
+      # activity. Re-enabling ourselves on every run resets that timer.
+      - name: Keep schedule alive
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/daily-telegram.yml/enable"
